@@ -15,6 +15,8 @@ import "../utils/TransferHelper.sol";
 contract Controller is IController, Ownable, ReentrancyGuard {
     using SafeMath for uint256;
 
+    string public constant version = "3.0";
+
     // Vault Address
     address public vault;
 
@@ -59,6 +61,10 @@ contract Controller is IController, Ownable, ReentrancyGuard {
 
     event MoveFund(address from, address to, uint256 withdrawnAmount, uint256 depositAmount, uint256 movedAt);
 
+    event SetAllocPoint(address subStrategy, uint256 allocPoint, uint256 totalAlloc);
+
+    event RegisterSubStrategy(address subStrategy, uint256 allocPoint);
+
     constructor(
         address _vault,
         ERC20 _asset,
@@ -77,6 +83,9 @@ contract Controller is IController, Ownable, ReentrancyGuard {
         _;
     }
 
+    /**
+        Deposit function is only callable by vault
+     */
     function deposit(uint256 _amount) external override onlyVault returns (uint256) {
         // Check input amount
         require(_amount > 0, "ZERO AMOUNT");
@@ -88,6 +97,10 @@ contract Controller is IController, Ownable, ReentrancyGuard {
         return depositAmt;
     }
 
+    /**
+        _deposit is internal function for deposit action, if default option is set, deposit all requested amount to defaultl sub strategy.
+        Unless loop through sub strategies regiestered and distribute assets according to the allocpoint of each SS
+     */
     function _deposit(uint256 _amount) internal returns (uint256 depositAmt) {
         if (isDefault) {
             // Check Such default SS exists in current pool
@@ -115,6 +128,10 @@ contract Controller is IController, Ownable, ReentrancyGuard {
         }
     }
 
+    /**
+        Withdraw requested amount of asset and send to receiver as well as send to treasury
+        if default pool has enough asset, withdraw from it. unless loop through SS in the sequence of APY, and try to withdraw
+     */
     function withdraw(uint256 _amount, address _receiver) external override onlyVault returns (uint256 withdrawAmt) {
         // Check input amount
         require(_amount > 0, "ZERO AMOUNT");
@@ -149,6 +166,10 @@ contract Controller is IController, Ownable, ReentrancyGuard {
         }
     }
 
+    /**
+        Harvest from sub strategies, group similar sub strategies in terms of reward token.
+        Then exchange it to asset in this vault, deposit again
+     */
     function harvest(uint256[] memory _ssIds) public onlyOwner returns (uint256) {
         // Loop Through harvest group
         for (uint256 i = 0; i < _ssIds.length; i++) {
@@ -209,6 +230,9 @@ contract Controller is IController, Ownable, ReentrancyGuard {
         emit MoveFund(from, to, withdrawAmt, depositAmt, block.timestamp);
     }
 
+    /**
+        Query for total assets deposited in all sub strategies
+     */
     function totalAssets() external view override returns (uint256) {
         uint256 total;
 
@@ -237,19 +261,77 @@ contract Controller is IController, Ownable, ReentrancyGuard {
         apySort = _apySort;
     }
 
+    /**
+        Set fee pool address
+     */
     function setTreasury(address _treasury) public onlyOwner {
         require(_treasury != address(0), "ZERO_ADDRESS");
         treasury = _treasury;
     }
 
+    /**
+        Set exchange address
+     */
     function setExchange(address _exchange) public onlyOwner {
         require(_exchange != address(0), "ZERO_ADDRESS");
         exchange = _exchange;
     }
 
+    /**
+        Set withdraw fee
+     */
     function setWithdrawFee(uint256 _withdrawFee) public onlyOwner {
         require(_withdrawFee < magnifier, "INVALID_WITHDRAW_FEE");
         withdrawFee = _withdrawFee;
+    }
+
+    /**
+        Set allocation point of a sub strategy and recalculate total allocation point of vault
+     */
+    function setAllocPoint(uint256 _allocPoint, uint256 _ssId) public onlyOwner {
+        require(_ssId < subStrategies.length, "INVALID_SS_ID");
+
+        // Set Alloc point of targeted SS
+        subStrategies[_ssId].allocPoint = _allocPoint;
+
+        // Calculate total alloc point
+        uint256 total;
+        for (uint256 i = 0; i < subStrategies.length; i++) {
+            total += subStrategies[i].allocPoint;
+        }
+
+        totalAllocPoint = total;
+
+        emit SetAllocPoint(subStrategies[_ssId].subStrategy, _allocPoint, totalAllocPoint);
+    }
+
+    /**
+        Register Substrategy to controller
+     */
+    function registerSubStrategy(address _subStrategy, uint256 _allocPoint) public onlyOwner {
+        // Push to sub strategy list
+        subStrategies.push(SSInfo({subStrategy: _subStrategy, allocPoint: _allocPoint}));
+
+        // Recalculate total alloc point
+        totalAllocPoint += _allocPoint;
+
+        emit RegisterSubStrategy(_subStrategy, _allocPoint);
+    }
+
+    /**
+        Set Default Deposit substrategy
+     */
+    function setDefaultDepositSS(uint8 _ssId) public onlyOwner {
+        require(_ssId < subStrategies.length, "INVALID_SS_ID");
+        defaultDepositSS = _ssId;
+    }
+
+    /**
+        Set Default Withdraw substrategy
+     */
+    function setDefaultWithdrawSS(uint8 _ssId) public onlyOwner {
+        require(_ssId < subStrategies.length, "INVALID_SS_ID");
+        defaultWithdrawSS = _ssId;
     }
 
     // Add reward token to list

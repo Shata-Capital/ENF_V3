@@ -18,6 +18,8 @@ contract EFVault is ERC20, Ownable, ReentrancyGuard {
 
     ERC20 public immutable asset;
 
+    string public constant version = "3.0";
+
     address public controller;
 
     uint256 public maxDeposit;
