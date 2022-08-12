@@ -58,7 +58,7 @@
     "format": "prettier --check \"**/*.{ts,js,sol}\"",
     "format:fix": "prettier --write \"**/*.{ts,js,sol}\"",
     "compile": "hardhat compile",
-    "test": "hardhat test",
+    "test": "hardhat test --network localnet",
     "gas": "REPORT_GAS=true hardhat test",
     "coverage": "HARDHAT_DEPLOY_FIXTURE=true hardhat coverage",
     "typechain": "TS_NODE_TRANSPILE_ONLY=true hardhat typechain",

@@ -98,7 +98,7 @@ contract Controller is IController, Ownable, ReentrancyGuard {
     }
 
     /**
-        _deposit is internal function for deposit action, if default option is set, deposit all requested amount to defaultl sub strategy.
+        _deposit is internal function for deposit action, if default option is set, deposit all requested amount to default sub strategy.
         Unless loop through sub strategies regiestered and distribute assets according to the allocpoint of each SS
      */
     function _deposit(uint256 _amount) internal returns (uint256 depositAmt) {
@@ -188,6 +188,8 @@ contract Controller is IController, Ownable, ReentrancyGuard {
             ISubStrategy(subStrategy).harvest();
         }
 
+        require(exchange != address(0), "EXCHANGE_NOT_SET");
+
         // Swap Reward token to asset for deposit
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             uint256 amount = IERC20(rewardTokens[i]).balanceOf(address(this));
@@ -241,6 +243,13 @@ contract Controller is IController, Ownable, ReentrancyGuard {
         }
 
         return total;
+    }
+
+    /**
+        Return SubStrategies length
+     */
+    function subStrategyLength() external view returns (uint256) {
+        return subStrategies.length;
     }
 
     //////////////////////////////////////////
@@ -324,6 +333,13 @@ contract Controller is IController, Ownable, ReentrancyGuard {
     function setDefaultDepositSS(uint8 _ssId) public onlyOwner {
         require(_ssId < subStrategies.length, "INVALID_SS_ID");
         defaultDepositSS = _ssId;
+    }
+
+    /**
+        Set Default Deposit mode
+     */
+    function setDefaultOption(bool _isDefault) public onlyOwner {
+        isDefault = _isDefault;
     }
 
     /**

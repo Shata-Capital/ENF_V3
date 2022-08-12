@@ -3,22 +3,288 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../interfaces/ISubStrategy.sol";
+import "../../utils/TransferHelper.sol";
+import "./interfaces/ICurvePoolAlusd.sol";
+import "./interfaces/IConvexBooster.sol";
+import "./interfaces/IConvexReward.sol";
+import "./interfaces/IPrice.sol";
 
 contract Alusd is Ownable, ISubStrategy {
     using SafeMath for uint256;
 
+    // Sub Strategy name
+    string public constant poolName = "Alusd V3";
+
+    // Curve Pool Address
+    address public curvePool;
+
+    // Curve LP token address
+    address public lpToken;
+
+    // Controller address
     address public controller;
 
-    constructor(address _controller) {
+    // USDC token address
+    address public usdc;
+
+    // Convex Booster address
+    address public convex;
+
+    // Pool Id of convex
+    uint256 public pId;
+
+    // Slippages for deposit and withdraw
+    uint256 public depositSlippage;
+    uint256 public withdrawSlippage;
+
+    // Constant magnifier
+    uint256 public constant magnifier = 10000;
+
+    // Total LP token deposit to convex booster
+    uint256 public totalLP;
+
+    // USDC token id for withdraw in curve pool
+    int128 public constant tokenId = 2;
+
+    // Harvest Gap
+    uint256 public override harvestGap;
+
+    // Latest Harvest
+    uint256 public override latestHarvest;
+
+    // Reward Token list
+    address[] public rewardTokens;
+
+    // Max Deposit
+    uint256 public override maxDeposit;
+
+    constructor(
+        address _curvePool,
+        address _lpToken,
+        address _controller,
+        address _usdc,
+        address _convex,
+        uint256 _pId
+    ) {
+        curvePool = _curvePool;
+        lpToken = _lpToken;
         controller = _controller;
+        usdc = _usdc;
+        convex = _convex;
+        pId = _pId;
     }
 
+    /**
+        Only controller can call
+     */
     modifier onlyController() {
         require(controller == _msgSender(), "ONLY_CONTROLLER");
         _;
     }
 
-    function deposit(uint256 _amount) external override returns (uint256) {}
+    //////////////////////////////////////////
+    //          VIEW FUNCTIONS              //
+    //////////////////////////////////////////
+
+    /**
+        External view function of total USDC deposited in Covex Booster
+     */
+    function totalAssets() external view override returns (uint256) {
+        return _totalAssets();
+    }
+
+    function getVirtualPrice() public view returns (uint256) {
+        return IPrice(lpToken).get_virtual_price();
+    }
+
+    /**
+        Internal view function of total USDC deposited
+    */
+    function _totalAssets() internal view returns (uint256) {
+        uint256 assets = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, totalLP, tokenId);
+        return assets;
+    }
+
+    /**
+        Deposit function of USDC
+     */
+    function deposit(uint256 _amount) external override onlyController returns (uint256) {
+        // Get Prev Deposit Amt
+        uint256 prevAmt = _totalAssets();
+
+        // Check Max Deposit
+        require(prevAmt + _amount <= maxDeposit, "EXCEED_MAX_DEPOSIT");
+
+        // Check whether transferred sufficient usdc from controller
+        require(IERC20(usdc).balanceOf(address(this)) >= _amount, "INSUFFICIENT_USDC_TRANSFER");
+
+        // Approve USDC to curve pool
+        IERC20(usdc).approve(curvePool, 0);
+        IERC20(usdc).approve(curvePool, _amount);
+
+        // Calculate LP output expect to avoid front running
+        uint256[4] memory amounts = [0, 0, _amount, 0];
+        uint256 expectOutput = ICurvePoolAlusd(curvePool).calc_token_amount(lpToken, amounts, true);
+
+        // Calculate Minimum output considering slippage
+        uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
+
+        // Add liquidity to Curve pool
+        ICurvePoolAlusd(curvePool).add_liquidity(lpToken, amounts, minOutput);
+
+        // Get LP token amount output
+        uint256 lpAmt = IERC20(lpToken).balanceOf(address(this));
+
+        // Increase LP token total amt
+        totalLP += lpAmt;
+
+        // Deposit to Convex Booster
+        IConvexBooster(convex).depositAll(pId, true);
+
+        // Get new total assets amount
+        uint256 newAmt = _totalAssets();
+
+        return newAmt - prevAmt;
+    }
+
+    /**
+        Withdraw function of USDC
+     */
+    function withdraw(uint256 _amount) external override onlyController returns (uint256) {
+        // Get Current Deposit Amt
+        uint256 total = _totalAssets();
+        uint256 lpAmt = (totalLP * _amount) / total;
+
+        // Get Reward pool address
+        (, , , address crvRewards, , ) = IConvexBooster(convex).poolInfo(pId);
+
+        // Withdraw Reward
+        IConvexReward(crvRewards).withdraw(_amount, false);
+
+        // Withdraw from Convex Pool
+        IConvexBooster(convex).withdraw(pId, _amount);
+
+        // Get LP Token Amt
+        uint256 lpWithdrawn = IERC20(lpToken).balanceOf(address(this));
+
+        // See if LP withdrawn as requested amount
+        require(lpWithdrawn == lpAmt, "LP_WITHDRAWN_NOT_MATCH");
+        totalLP -= lpWithdrawn;
+
+        // Calculate Minimum output
+        uint256 minAmt = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, lpWithdrawn, tokenId);
+        minAmt = (minAmt * (magnifier - withdrawSlippage)) / magnifier;
+
+        // Withdraw USDC from Curve Pool
+        ICurvePoolAlusd(curvePool).remove_liquidity_one_coin(lpToken, lpWithdrawn, tokenId, minAmt);
+
+        // Transfer withdrawn USDC to controller
+        uint256 asset = IERC20(usdc).balanceOf(address(this));
+        TransferHelper.safeTransfer(usdc, controller, asset);
+
+        return asset;
+    }
+
+    function harvest() external override onlyController {
+        // Get CRV reward pool
+        (, , , address crvRewards, , ) = IConvexBooster(convex).poolInfo(pId);
+        IConvexReward(crvRewards).getReward(address(this), true);
+
+        // Transfer Reward tokens to controller
+        for (uint256 i = 0; i < rewardTokens.length; i++) {
+            uint256 balance = IERC20(rewardTokens[i]).balanceOf(address(this));
+            TransferHelper.safeTransfer(rewardTokens[i], controller, balance);
+        }
+
+        // Update latest block timestamp
+        latestHarvest = block.timestamp;
+    }
+
+    function withdrawable(uint256 _amount) external view override returns (bool) {
+        // Get Current Deposit Amt
+        uint256 total = _totalAssets();
+
+        // If requested amt is bigger than total asset, return false
+        if (_amount > total) return false;
+
+        uint256 lpAmt = (totalLP * _amount) / total;
+        uint256 expectedOutput = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, lpAmt, tokenId);
+
+        // If expected output is
+        if (expectedOutput >= (_amount * (magnifier - withdrawSlippage)) / magnifier) return true;
+        else return false;
+    }
+
+    //////////////////////////////////////////////////
+    //               SET CONFIGURATION              //
+    //////////////////////////////////////////////////
+
+    /**
+        Set Controller
+     */
+    function setController(address _controller) public onlyOwner {
+        require(_controller != address(0), "INVALID_LP_TOKEN");
+        controller = _controller;
+    }
+
+    /**
+        Set Deposit Slipage
+     */
+    function setDepositSlippage(uint256 _slippage) public onlyOwner {
+        require(_slippage < magnifier, "INVALID_SLIPPAGE");
+
+        depositSlippage = _slippage;
+    }
+
+    /**
+        Set Withdraw Slipage
+     */
+    function setWithdrawSlippage(uint256 _slippage) public onlyOwner {
+        require(_slippage < magnifier, "INVALID_SLIPPAGE");
+
+        withdrawSlippage = _slippage;
+    }
+
+    /**
+        Set Pool Id
+     */
+    function setPoolId(uint256 _pId) public onlyOwner {
+        require(_pId < IConvexBooster(convex).poolLength(), "INVALID_POOL_ID");
+        pId = _pId;
+    }
+
+    /**
+        Set LP Token
+     */
+    function setLPToken(address _lpToken) public onlyOwner {
+        require(_lpToken != address(0), "INVALID_LP_TOKEN");
+        lpToken = _lpToken;
+    }
+
+    /**
+        Set Curve pool
+     */
+    function setCurvePool(address _curvePool) public onlyOwner {
+        require(_curvePool != address(0), "INVALID_LP_TOKEN");
+        curvePool = _curvePool;
+    }
+
+    /**
+        Set Harvest Gap
+     */
+    function setHarvestGap(uint256 _harvestGap) public onlyOwner {
+        require(_harvestGap > 0, "INVALID_HARVEST_GAP");
+        harvestGap = _harvestGap;
+    }
+
+    /**
+        Set Max Deposit
+     */
+    function setMaxDeposit(uint256 _maxDeposit) public onlyOwner {
+        require(_maxDeposit > 0, "INVALID_MAX_DEPOSIT");
+        maxDeposit = _maxDeposit;
+    }
 }
