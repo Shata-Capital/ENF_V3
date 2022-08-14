@@ -12,6 +12,8 @@ import "./interfaces/IConvexBooster.sol";
 import "./interfaces/IConvexReward.sol";
 import "./interfaces/IPrice.sol";
 
+import "hardhat/console.sol";
+
 contract Alusd is Ownable, ISubStrategy {
     using SafeMath for uint256;
 
@@ -75,6 +77,9 @@ contract Alusd is Ownable, ISubStrategy {
         usdc = _usdc;
         convex = _convex;
         pId = _pId;
+
+        // Set Max Deposit as max uin256
+        maxDeposit = type(uint256).max;
     }
 
     /**
@@ -104,6 +109,7 @@ contract Alusd is Ownable, ISubStrategy {
         Internal view function of total USDC deposited
     */
     function _totalAssets() internal view returns (uint256) {
+        if (totalLP == 0) return 0;
         uint256 assets = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, totalLP, tokenId);
         return assets;
     }
@@ -141,12 +147,14 @@ contract Alusd is Ownable, ISubStrategy {
         // Increase LP token total amt
         totalLP += lpAmt;
 
+        // Approve LP token to Convex
+        IERC20(lpToken).approve(convex, lpAmt);
+
         // Deposit to Convex Booster
         IConvexBooster(convex).depositAll(pId, true);
 
         // Get new total assets amount
         uint256 newAmt = _totalAssets();
-
         return newAmt - prevAmt;
     }
 
@@ -162,10 +170,10 @@ contract Alusd is Ownable, ISubStrategy {
         (, , , address crvRewards, , ) = IConvexBooster(convex).poolInfo(pId);
 
         // Withdraw Reward
-        IConvexReward(crvRewards).withdraw(_amount, false);
+        IConvexReward(crvRewards).withdraw(lpAmt, false);
 
         // Withdraw from Convex Pool
-        IConvexBooster(convex).withdraw(pId, _amount);
+        IConvexBooster(convex).withdraw(pId, lpAmt);
 
         // Get LP Token Amt
         uint256 lpWithdrawn = IERC20(lpToken).balanceOf(address(this));
@@ -178,11 +186,17 @@ contract Alusd is Ownable, ISubStrategy {
         uint256 minAmt = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, lpWithdrawn, tokenId);
         minAmt = (minAmt * (magnifier - withdrawSlippage)) / magnifier;
 
+        console.log("Withdraw: ", minAmt);
+
+        // Approve LP token to Curve
+        IERC20(lpToken).approve(curvePool, lpWithdrawn);
+
         // Withdraw USDC from Curve Pool
-        ICurvePoolAlusd(curvePool).remove_liquidity_one_coin(lpToken, lpWithdrawn, tokenId, minAmt);
+        ICurvePoolAlusd(curvePool).remove_liquidity_one_coin(lpToken, lpWithdrawn, tokenId, 0);
 
         // Transfer withdrawn USDC to controller
         uint256 asset = IERC20(usdc).balanceOf(address(this));
+        console.log("Withdraw: ", minAmt, asset);
         TransferHelper.safeTransfer(usdc, controller, asset);
 
         return asset;

@@ -12,6 +12,8 @@ import "../interfaces/ISubStrategy.sol";
 import "../interfaces/IExchange.sol";
 import "../utils/TransferHelper.sol";
 
+import "hardhat/console.sol";
+
 contract Controller is IController, Ownable, ReentrancyGuard {
     using SafeMath for uint256;
 
@@ -145,6 +147,8 @@ contract Controller is IController, Ownable, ReentrancyGuard {
             withdrawAmt = ISubStrategy(subStrategies[defaultWithdrawSS].subStrategy).withdraw(_amount);
         } else {
             for (uint256 i = 0; i < subStrategies.length; i++) {
+                // Prevent duplicate checking of default pool
+                if (i == defaultWithdrawSS) continue;
                 bool withdrawable = ISubStrategy(subStrategies[apySort[i]].subStrategy).withdrawable(_amount);
                 if (!withdrawable) continue;
 
@@ -199,12 +203,19 @@ contract Controller is IController, Ownable, ReentrancyGuard {
         }
 
         // Deposit harvested reward
-        uint256 assetsHarvested = asset.balanceOf(address(this));
+        // Todo change balanceOf funciton to support Eth too
+        // uint256 assetsHarvested = asset.balanceOf(address(this));
+        uint256 assetsHarvested = getBalance(address(this));
         _deposit((assetsHarvested));
 
         emit Harvest(assetsHarvested, block.timestamp);
 
         return assetsHarvested;
+    }
+
+    function getBalance(address account) internal view returns (uint256) {
+        if (address(asset) == address(0)) return address(account).balance;
+        else return IERC20(asset).balanceOf(account);
     }
 
     /**
@@ -318,6 +329,11 @@ contract Controller is IController, Ownable, ReentrancyGuard {
         Register Substrategy to controller
      */
     function registerSubStrategy(address _subStrategy, uint256 _allocPoint) public onlyOwner {
+        // Prevent duplicate register
+        for (uint256 i = 0; i < subStrategies.length; i++) {
+            require(subStrategies[i].subStrategy != _subStrategy, "ALREADY_REGISTERED");
+        }
+
         // Push to sub strategy list
         subStrategies.push(SSInfo({subStrategy: _subStrategy, allocPoint: _allocPoint}));
 

@@ -7,7 +7,7 @@ const { usdcContract, uniV2RouterContract, uniV2FactoryContract } = require("./e
 
 const { usdc, weth, convexBooster, alusdPid, alusdLP, curveAlusd } = require("../constants/constants")
 
-let vault, controller, alusd
+let vault, controller, alusd, depositApprover
 
 function toEth(num) {
     return utils.formatEther(num)
@@ -42,6 +42,12 @@ describe("ENF Vault test", async () => {
     before(async () => {
         [deployer, alice, bob, carol, david, evan, fiona, treasury] = await ethers.getSigners();
 
+        // Deploy DepositApprover
+        console.log("Deploying DepositApprover".green)
+        const DepositApprover = await ethers.getContractFactory("DepositApprover")
+        depositApprover = await DepositApprover.deploy(usdc)
+        console.log(`DepositApprover deployed at: ${depositApprover.address}\n`)
+
         // Deploy Vault
         console.log("Deploying Vault".green)
         const Vault = await ethers.getContractFactory("EFVault")
@@ -59,6 +65,34 @@ describe("ENF Vault test", async () => {
         const Alusd = await ethers.getContractFactory("Alusd")
         alusd = await Alusd.deploy(curveAlusd, alusdLP, controller.address, usdc, convexBooster, alusdPid)
         console.log(`Alusd deployed at: ${alusd.address}\n`)
+
+        /**
+         * Wiring Contracts with each other 
+         */
+
+        // Set Vault on deposit approver
+        await depositApprover.setVault(vault.address)
+        console.log("Deposit Approver set Vault")
+
+        // Set deposit approver to vault
+        await vault.setDepositApprover(depositApprover.address)
+        console.log("Vault set deposit approver")
+
+        // Set Controller to vault
+        await vault.setController(controller.address)
+        console.log("Controller set Vault")
+
+        /**
+         * Set configuration
+         */
+
+        // Set DepositSlippage on ALUSD
+        await alusd.setDepositSlippage(100)
+        console.log("Deposit slippage set")
+
+        // Set WithdrawSlippage on ALUSD
+        await alusd.setWithdrawSlippage(100)
+        console.log("Withdraw slippage set")
     })
 
     it("Vault Deployed", async () => {
@@ -96,5 +130,43 @@ describe("ENF Vault test", async () => {
         console.log(`\tTotal Alloc: ${totalAlloc.toNumber()}, ssLength: ${ssLength.toNumber()}`)
         expect(totalAlloc).to.equal(100)
         expect(ssLength).to.equal(1)
+    })
+
+    it("Register Alusd will be reverted for duplication", async () => {
+        await expect(controller.connect(deployer).registerSubStrategy(alusd.address, 100)).to.revertedWith("ALREADY_REGISTERED")
+    })
+
+    ///////////////////////////////////////////////////
+    //                 DEPOSIT                       //
+    ///////////////////////////////////////////////////
+    it("Deposit 1 USDC", async () => {
+        // Approve to deposit approver
+        await usdcContract(alice).approve(depositApprover.address, fromUSDC(100))
+
+        // Deposit
+        await depositApprover.connect(alice).deposit(fromUSDC(100))
+
+        // Read Total Assets
+        const total = await vault.totalAssets()
+        console.log(`\tTotal USDC Balance: ${toUSDC(total)}`)
+
+        // Read ENF token Mint
+        const enf = await vault.balanceOf(alice.address)
+        console.log(`\tAlice ENF Balance: ${toEth(enf)}`)
+    })
+
+    it("Withdraw 90 USDC", async () => {
+        await vault.connect(alice).withdraw(fromUSDC(90), alice.address);
+        // Read Total Assets
+        const total = await vault.totalAssets()
+        console.log(`\tTotal USDC Balance: ${toUSDC(total)}`)
+
+        // Read ENF token Mint
+        const enf = await vault.balanceOf(alice.address)
+        console.log(`\tAlice ENF Balance: ${toEth(enf)}`)
+    })
+
+    it("Withdraw 10 USDC will be reverted", async () => {
+        await expect(vault.connect(alice).withdraw(fromUSDC(10), alice.address)).to.revertedWith("INVALID_WITHDRAWN_SHARES")
     })
 })

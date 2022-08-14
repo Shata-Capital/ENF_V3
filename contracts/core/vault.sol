@@ -10,6 +10,9 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../interfaces/IController.sol";
+import "../utils/TransferHelper.sol";
+
+import "hardhat/console.sol";
 
 contract EFVault is ERC20, Ownable, ReentrancyGuard {
     using SafeERC20 for ERC20;
@@ -19,6 +22,8 @@ contract EFVault is ERC20, Ownable, ReentrancyGuard {
     ERC20 public immutable asset;
 
     string public constant version = "3.0";
+
+    address public depositApprover;
 
     address public controller;
 
@@ -41,12 +46,14 @@ contract EFVault is ERC20, Ownable, ReentrancyGuard {
     function deposit(uint256 assets, address receiver) public virtual nonReentrant returns (uint256 shares) {
         require(assets != 0, "ZERO_ASSETS");
 
+        // Todo update transfer with trasferhelper and check balance beforehand
+        require(getBalance(address(this)) >= assets, "INSUFFICIENT_TRANSFER");
+
         // Need to transfer before minting or ERC777s could reenter.
-        asset.safeTransferFrom(msg.sender, address(controller), assets);
+        TransferHelper.safeTransfer(address(asset), address(controller), assets);
 
         // Total Assets amount until now
         uint256 totalDeposit = IController(controller).totalAssets();
-
         // Calls Deposit function on controller
         uint256 newDeposit = IController(controller).deposit(assets);
 
@@ -59,6 +66,12 @@ contract EFVault is ERC20, Ownable, ReentrancyGuard {
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
+    }
+
+    function getBalance(address account) internal view returns (uint256) {
+        // Asset is zero address when it is ether
+        if (address(asset) == address(0)) return address(account).balance;
+        else return IERC20(asset).balanceOf(account);
     }
 
     function withdraw(uint256 assets, address receiver) public virtual nonReentrant returns (uint256 shares) {
@@ -113,5 +126,10 @@ contract EFVault is ERC20, Ownable, ReentrancyGuard {
     function setController(address _controller) public onlyOwner {
         require(_controller != address(0), "INVALID_ZERO_ADDRESS");
         controller = _controller;
+    }
+
+    function setDepositApprover(address _approver) public onlyOwner {
+        require(_approver != address(0), "INVALID_ZERO_ADDRESS");
+        depositApprover = _approver;
     }
 }

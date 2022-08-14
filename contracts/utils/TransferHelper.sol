@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+import "hardhat/console.sol";
+
 // helper methods for interacting with ERC20 tokens and sending ETH that do not consistently return true/false
 library TransferHelper {
     function safeApprove(
@@ -25,7 +27,7 @@ library TransferHelper {
         if (address(token) == address(0)) {
             safeTransferETH(to, value);
         } else {
-            safeTransfer(address(token), to, value);
+            safeTransferToken(address(token), to, value);
         }
     }
 
