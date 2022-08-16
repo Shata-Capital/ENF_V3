@@ -10,3 +10,18 @@ exports.curveAlusd = "0xA79828DF1850E8a3A3064576f380D90aECDD3359"
 
 exports.alusdLP = "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c"
 exports.alusdPid = 36
+
+exports.lusdLP = "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA"
+exports.lusdPid = 33
+
+exports.curveAave = "0xDeBF20617708857ebe4F679508E7b7863a8A8EeE"
+exports.aaveLP = "0xFd2a8fA60Abd58Efe3EeE34dd494cD491dC14900"
+exports.aavePid = 12
+
+exports.curveCompound = "0xeB21209ae4C2c9FF2a86ACA31E123764A3B6Bc06"
+exports.compoundLP = "0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2"
+exports.compoundPid = 56
+
+exports.curveTri = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"
+exports.triLP = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+exports.triPid = 13

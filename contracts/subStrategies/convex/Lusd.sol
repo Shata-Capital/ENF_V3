@@ -14,11 +14,11 @@ import "./interfaces/IPrice.sol";
 
 import "hardhat/console.sol";
 
-contract Alusd is Ownable, ISubStrategy {
+contract Lusd is Ownable, ISubStrategy {
     using SafeMath for uint256;
 
     // Sub Strategy name
-    string public constant poolName = "Alusd V3";
+    string public constant poolName = "Lusd V3";
 
     // Curve Pool Address
     address public curvePool;

@@ -139,7 +139,7 @@ describe("ENF Vault test", async () => {
     ///////////////////////////////////////////////////
     //                 DEPOSIT                       //
     ///////////////////////////////////////////////////
-    it("Deposit 1 USDC", async () => {
+    it("Deposit 100 USDC", async () => {
         // Approve to deposit approver
         await usdcContract(alice).approve(depositApprover.address, fromUSDC(100))
 
@@ -155,6 +155,9 @@ describe("ENF Vault test", async () => {
         console.log(`\tAlice ENF Balance: ${toEth(enf)}`)
     })
 
+    ///////////////////////////////////////////////////
+    //                WITHDRAW                       //
+    ///////////////////////////////////////////////////
     it("Withdraw 90 USDC", async () => {
         await vault.connect(alice).withdraw(fromUSDC(90), alice.address);
         // Read Total Assets
@@ -168,5 +171,61 @@ describe("ENF Vault test", async () => {
 
     it("Withdraw 10 USDC will be reverted", async () => {
         await expect(vault.connect(alice).withdraw(fromUSDC(10), alice.address)).to.revertedWith("INVALID_WITHDRAWN_SHARES")
+    })
+
+    it("Deposit 1000 USDC", async () => {
+        // Approve to deposit approver
+        await usdcContract(alice).approve(depositApprover.address, fromUSDC(1000))
+
+        // Deposit
+        await depositApprover.connect(alice).deposit(fromUSDC(1000))
+
+        // Read Total Assets
+        const total = await vault.totalAssets()
+        console.log(`\tTotal USDC Balance: ${toUSDC(total)}`)
+
+        // Read ENF token Mint
+        const enf = await vault.balanceOf(alice.address)
+        console.log(`\tAlice ENF Balance: ${toEth(enf)}`)
+    })
+
+    //////////////////////////////////////////////////
+    //                  HARVEST                     //
+    //////////////////////////////////////////////////
+    it("Harvest from ALUSD", async () => {
+        await controller.connect(deployer).harvest()
+
+        // Read Total Assets
+        const total = await vault.totalAssets()
+        console.log(`\tTotal USDC Balance: ${toUSDC(total)}`)
+    })
+
+    //////////////////////////////////////////////////
+    //                 EMERGENCY WITHDRW            //
+    //////////////////////////////////////////////////
+    it("Emergency Withdraw from Alusd", async () => {
+        await alusd.connect(deployer).emergencyWithdraw()
+
+        // Read Total Assets
+        const total = await vault.totalAssets()
+        console.log(`\tTotal USDC Balance: ${toUSDC(total)}`)
+
+        // Read LP Amount
+        const lp = await alusdLP.balanceOf(deployer.address)
+        console.log(`\tLP Balance: ${toEth(lp)}`)
+    })
+
+    ///////////////////////////////////////////////////
+    //               Owner Deposit                   //
+    ///////////////////////////////////////////////////
+    it("Owner Deposit to Alusd", async () => {
+        // Approve to deposit approver
+        await usdcContract(deployer).approve(alusd.address, fromUSDC(1000))
+
+        await alusd.connect(deployer).ownerDeposit(fromUSDC(1000))
+
+        // Read Total Assets
+        const total = await vault.totalAssets()
+        console.log(`\tTotal USDC Balance: ${toUSDC(total)}`)
     })
 })

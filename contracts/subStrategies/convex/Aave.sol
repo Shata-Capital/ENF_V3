@@ -7,18 +7,18 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../interfaces/ISubStrategy.sol";
 import "../../utils/TransferHelper.sol";
-import "./interfaces/ICurvePoolAlusd.sol";
+import "./interfaces/ICurvePoolAave.sol";
 import "./interfaces/IConvexBooster.sol";
 import "./interfaces/IConvexReward.sol";
 import "./interfaces/IPrice.sol";
 
 import "hardhat/console.sol";
 
-contract Alusd is Ownable, ISubStrategy {
+contract Aave is Ownable, ISubStrategy {
     using SafeMath for uint256;
 
     // Sub Strategy name
-    string public constant poolName = "Alusd V3";
+    string public constant poolName = "AAVE V3";
 
     // Curve Pool Address
     address public curvePool;
@@ -49,7 +49,7 @@ contract Alusd is Ownable, ISubStrategy {
     uint256 public totalLP;
 
     // USDC token id for withdraw in curve pool
-    int128 public constant tokenId = 2;
+    int128 public constant tokenId = 1;
 
     // Harvest Gap
     uint256 public override harvestGap;
@@ -110,7 +110,7 @@ contract Alusd is Ownable, ISubStrategy {
     */
     function _totalAssets() internal view returns (uint256) {
         if (totalLP == 0) return 0;
-        uint256 assets = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, totalLP, tokenId);
+        uint256 assets = ICurvePoolAave(curvePool).calc_withdraw_one_coin(totalLP, tokenId);
         return assets;
     }
 
@@ -141,13 +141,13 @@ contract Alusd is Ownable, ISubStrategy {
 
         // Calculate LP output expect to avoid front running
         uint256[4] memory amounts = [0, 0, _amount, 0];
-        uint256 expectOutput = ICurvePoolAlusd(curvePool).calc_token_amount(lpToken, amounts, true);
+        uint256 expectOutput = ICurvePoolAave(curvePool).calc_token_amount(amounts, true);
 
         // Calculate Minimum output considering slippage
         uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
 
         // Add liquidity to Curve pool
-        ICurvePoolAlusd(curvePool).add_liquidity(lpToken, amounts, minOutput);
+        ICurvePoolAave(curvePool).add_liquidity(amounts, minOutput, true);
 
         // Get LP token amount output
         uint256 lpAmt = IERC20(lpToken).balanceOf(address(this));
@@ -191,14 +191,14 @@ contract Alusd is Ownable, ISubStrategy {
         totalLP -= lpWithdrawn;
 
         // Calculate Minimum output
-        uint256 minAmt = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, lpWithdrawn, tokenId);
+        uint256 minAmt = ICurvePoolAave(curvePool).calc_withdraw_one_coin(lpWithdrawn, tokenId);
         minAmt = (minAmt * (magnifier - withdrawSlippage)) / magnifier;
 
         // Approve LP token to Curve
         IERC20(lpToken).approve(curvePool, lpWithdrawn);
 
         // Withdraw USDC from Curve Pool
-        ICurvePoolAlusd(curvePool).remove_liquidity_one_coin(lpToken, lpWithdrawn, tokenId, minAmt);
+        ICurvePoolAave(curvePool).remove_liquidity_one_coin(lpWithdrawn, tokenId, minAmt, true);
 
         // Transfer withdrawn USDC to controller
         uint256 asset = IERC20(usdc).balanceOf(address(this));
@@ -273,7 +273,7 @@ contract Alusd is Ownable, ISubStrategy {
         if (_amount > total) return false;
 
         uint256 lpAmt = (totalLP * _amount) / total;
-        uint256 expectedOutput = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, lpAmt, tokenId);
+        uint256 expectedOutput = ICurvePoolAave(curvePool).calc_withdraw_one_coin(lpAmt, tokenId);
 
         // If expected output is
         if (expectedOutput >= (_amount * (magnifier - withdrawSlippage)) / magnifier) return true;

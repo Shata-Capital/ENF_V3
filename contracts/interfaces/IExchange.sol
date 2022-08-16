@@ -5,6 +5,7 @@ interface IExchange {
     function swapExactInput(
         address _from,
         address _to,
+        bytes32 _index,
         uint256 _amount
     ) external returns (uint256);
 }

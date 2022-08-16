@@ -174,7 +174,9 @@ contract Controller is IController, Ownable, ReentrancyGuard {
         Harvest from sub strategies, group similar sub strategies in terms of reward token.
         Then exchange it to asset in this vault, deposit again
      */
-    function harvest(uint256[] memory _ssIds) public onlyOwner returns (uint256) {
+    function harvest(uint256[] memory _ssIds, bytes32[] memory _indexes) public onlyOwner returns (uint256) {
+        // Indexes must have same length of reward tokens
+        require(_indexes.length == rewardTokens.length, "INVALID_INDEX");
         // Loop Through harvest group
         for (uint256 i = 0; i < _ssIds.length; i++) {
             address subStrategy = subStrategies[_ssIds[i]].subStrategy;
@@ -199,12 +201,15 @@ contract Controller is IController, Ownable, ReentrancyGuard {
             uint256 amount = IERC20(rewardTokens[i]).balanceOf(address(this));
             if (amount == 0) continue;
 
-            IExchange(exchange).swapExactInput(rewardTokens[i], address(asset), amount);
+            // Approve token to Exchange
+            IERC20(rewardTokens[i]).approve(exchange, 0);
+            IERC20(rewardTokens[i]).approve(exchange, amount);
+
+            // Call Swap on exchange
+            IExchange(exchange).swapExactInput(rewardTokens[i], address(asset), _indexes[i], amount);
         }
 
         // Deposit harvested reward
-        // Todo change balanceOf funciton to support Eth too
-        // uint256 assetsHarvested = asset.balanceOf(address(this));
         uint256 assetsHarvested = getBalance(address(this));
         _deposit((assetsHarvested));
 

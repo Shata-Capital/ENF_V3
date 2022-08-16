@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IUniswapV2Router.sol";
 import "../interfaces/IUniswapV3Router.sol";
 import "../interfaces/IExchange.sol";
@@ -14,6 +15,8 @@ contract Exchange is IExchange, Ownable {
     string public constant version = "3.0";
 
     address public weth;
+
+    address public controller;
 
     struct PathInfo {
         uint256 version;
@@ -28,8 +31,9 @@ contract Exchange is IExchange, Ownable {
 
     event RemovePath(bytes32 hash, uint256 version, address router, address[] path);
 
-    constructor(address _weth) {
+    constructor(address _weth, address _controller) {
         weth = _weth;
+        controller = _controller;
     }
 
     /**
@@ -100,6 +104,68 @@ contract Exchange is IExchange, Ownable {
     function swapExactInput(
         address _from,
         address _to,
+        bytes32 _index,
         uint256 _amount
-    ) external override returns (uint256) {}
+    ) external override returns (uint256) {
+        // Get router and version
+        address router = paths[_index].router;
+        uint256 version = paths[_index].version;
+
+        // Transfer token from controller
+        TransferHelper.safeTransferFrom(_from, controller, address(this), _amount);
+
+        // Approve token to router
+        IERC20(_from).approve(router, 0);
+        IERC20(_from).approve(router, _amount);
+
+        // Swap token using uniswap/sushiswap
+        if (version == 2) {
+            // If version 2 use uniswap v2 interface
+            if (_to == weth) {
+                // If target token is Weth
+                // Ignore front-running
+                IUniswapV2Router(router).swapExactTokensForETHSupportingFeeOnTransferTokens(
+                    _amount,
+                    0,
+                    paths[_index].path,
+                    address(this),
+                    block.timestamp + 3600
+                );
+            } else {
+                IUniswapV2Router(router).swapExactTokensForETHSupportingFeeOnTransferTokens(
+                    _amount,
+                    0,
+                    paths[_index].path,
+                    address(this),
+                    block.timestamp + 3600
+                );
+            }
+        } else {
+            IUniswapV3Router(router).exactInputSingle(
+                IUniswapV3Router.ExactInputSingleParams({
+                    tokenIn: _from,
+                    tokenOut: _to,
+                    fee: 0,
+                    recipient: address(this),
+                    deadline: block.timestamp + 3600,
+                    amountIn: _amount,
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0
+                })
+            );
+        }
+
+        // Get Swapped output amount
+        uint256 outAmt = getBalance(_to, address(this));
+
+        // Transfer to Controller
+        TransferHelper.safeTransfer(_to, controller, outAmt);
+
+        return outAmt;
+    }
+
+    function getBalance(address asset, address account) internal view returns (uint256) {
+        if (address(asset) == address(weth)) return address(account).balance;
+        else return IERC20(asset).balanceOf(account);
+    }
 }
