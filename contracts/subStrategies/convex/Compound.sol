@@ -14,7 +14,7 @@ import "./interfaces/IPrice.sol";
 
 import "hardhat/console.sol";
 
-contract Compound is Ownable, ISubStrategy {
+contract CompoundV3 is Ownable, ISubStrategy {
     using SafeMath for uint256;
 
     // Sub Strategy name
@@ -142,13 +142,14 @@ contract Compound is Ownable, ISubStrategy {
         IERC20(usdc).approve(curvePool, _amount);
 
         // Calculate LP output expect to avoid front running
-        uint256[4] memory amounts = [0, 0, _amount, 0];
+        uint256[2] memory amounts = [0, _amount];
         // uint256 expectOutput = ICurvePoolCompound(curvePool).calc_token_amount(amounts, true);
 
         // Calculate Minimum output considering slippage
         // uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
 
         // Add liquidity to Curve pool
+        console.log("Add: ", _amount, curvePool);
         ICurvePoolCompound(curvePool).add_liquidity(amounts, 0);
 
         // Get LP token amount output

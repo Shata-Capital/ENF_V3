@@ -3,11 +3,11 @@ const { expect, util } = require("chai");
 const colors = require("colors")
 const { utils } = require("ethers");
 
-const { usdcContract, uniV2RouterContract, uniV2FactoryContract, aaveContract, } = require("./externalContracts")
+const { usdcContract, uniV2RouterContract, uniV2FactoryContract, triContract, } = require("./externalContracts")
 
-const { usdc, weth, convexBooster, aavePid, aaveLP, curveAave, aaveLP, compoundLP, triLP, crv, stkAAVE, lqty, alcx, uniSwapV2Router, crvUsdcPath } = require("../constants/constants")
+const { usdc, weth, convexBooster, triPid, curveTri, triLP, crv, stkTRI, lqty, alcx, uniSwapV2Router, crvUsdcPath } = require("../constants/constants")
 
-let vault, controller, aave, depositApprover, exchange
+let vault, controller, tri, depositApprover, exchange
 
 function toEth(num) {
     return utils.formatEther(num)
@@ -60,11 +60,11 @@ describe("ENF Vault test", async () => {
         controller = await Controller.deploy(vault.address, usdc, treasury.address)
         console.log(`Controller deployed at: ${controller.address}\n`)
 
-        // Deploy Aave
-        console.log("Deploying AAVE".green)
-        const Aave = await ethers.getContractFactory("Aave")
-        aave = await Aave.deploy(curveAave, aaveLP, controller.address, usdc, convexBooster, aavePid)
-        console.log(`Aave deployed at: ${aave.address}\n`)
+        // Deploy Tri
+        console.log("Deploying TRI".green)
+        const Tri = await ethers.getContractFactory("Tri")
+        tri = await Tri.deploy(curveTri, triLP, controller.address, usdc, convexBooster, triPid)
+        console.log(`Tri deployed at: ${tri.address}\n`)
 
         // Deploy Exchange
         console.log("Deploying Exchange".green)
@@ -94,19 +94,19 @@ describe("ENF Vault test", async () => {
          * Set configuration
          */
 
-        // Set DepositSlippage on AAVE
-        await aave.setDepositSlippage(100)
+        // Set DepositSlippage on TRI
+        await tri.setDepositSlippage(100)
         console.log("Deposit slippage set")
 
-        // Set WithdrawSlippage on AAVE
-        await aave.setWithdrawSlippage(100)
+        // Set WithdrawSlippage on TRI
+        await tri.setWithdrawSlippage(100)
         console.log("Withdraw slippage set")
 
         // Set CRV token for harvest token
         await controller.addRewardToken(crv)
 
         // Set CRV token for harvest token
-        await aave.addRewardToken(crv)
+        await tri.addRewardToken(crv)
 
         // Set CRV-USDC to exchange
         await exchange.addPath(
@@ -143,13 +143,13 @@ describe("ENF Vault test", async () => {
         console.log(`\tUSDC of Alice: ${toUSDC(newUSDC)}`)
     })
 
-    // Register Aave SS
-    it("Register Aave with non-owner will be reverted", async () => {
-        await expect(controller.connect(alice).registerSubStrategy(aave.address, 100)).to.revertedWith("Ownable: caller is not the owner")
+    // Register Tri SS
+    it("Register Tri with non-owner will be reverted", async () => {
+        await expect(controller.connect(alice).registerSubStrategy(tri.address, 100)).to.revertedWith("Ownable: caller is not the owner")
     })
 
-    it("Register Aave as 100 alloc point, check total alloc to be 100, ss length to be 1", async () => {
-        await controller.connect(deployer).registerSubStrategy(aave.address, 100)
+    it("Register Tri as 100 alloc point, check total alloc to be 100, ss length to be 1", async () => {
+        await controller.connect(deployer).registerSubStrategy(tri.address, 100)
         const totalAlloc = await controller.totalAllocPoint()
         const ssLength = await controller.subStrategyLength()
 
@@ -158,8 +158,8 @@ describe("ENF Vault test", async () => {
         expect(ssLength).to.equal(1)
     })
 
-    it("Register Aave will be reverted for duplication", async () => {
-        await expect(controller.connect(deployer).registerSubStrategy(aave.address, 100)).to.revertedWith("ALREADY_REGISTERED")
+    it("Register Tri will be reverted for duplication", async () => {
+        await expect(controller.connect(deployer).registerSubStrategy(tri.address, 100)).to.revertedWith("ALREADY_REGISTERED")
     })
 
     ///////////////////////////////////////////////////
@@ -216,7 +216,7 @@ describe("ENF Vault test", async () => {
     })
 
     // it("Get Pid", async () => {
-    //     const triPID = await aave.getPID(triLP)
+    //     const triPID = await tri.getPID(triLP)
     //     console.log(`\tTriPool Pid: ${triPID}`)
     // })
 
@@ -234,7 +234,7 @@ describe("ENF Vault test", async () => {
     //     await network.provider.send("evm_mine");
     // })
 
-    it("Harvest AAVE", async () => {
+    it("Harvest TRI", async () => {
         // Get CRV-USDC path index
         const index = await exchange.getPathIndex(uniSwapV2Router, [crv, weth, usdc])
         console.log(`\tCRV-USDC Path index: ${index}\n`)
@@ -250,33 +250,33 @@ describe("ENF Vault test", async () => {
     //              EMERGENCY WITHDRAW            //
     ////////////////////////////////////////////////
     it("Emergency Withdraw by non-owner will be reverted", async () => {
-        await expect(aave.connect(alice).emergencyWithdraw()).to.be.revertedWith("Ownable: caller is not the owner")
+        await expect(tri.connect(alice).emergencyWithdraw()).to.be.revertedWith("Ownable: caller is not the owner")
     })
 
     it("Emergency Withdraw", async () => {
-        await aave.emergencyWithdraw()
+        await tri.emergencyWithdraw()
     })
 
     // it("Get LP withdrawn", async () => {
-    //     const lpBal = await aaveContract(alice).balanceOf(deployer.address)
-    //     console.log(`\tAave LP Withdrawn: ${toEth(lpBal)}`)
+    //     const lpBal = await triContract(alice).balanceOf(deployer.address)
+    //     console.log(`\tTri LP Withdrawn: ${toEth(lpBal)}`)
     // })
 
     /////////////////////////////////////////////////
     //               OWNER DEPOSIT                 //
     /////////////////////////////////////////////////
     it("Owner deposit will be reverted", async () => {
-        await expect(aave.connect(alice).ownerDeposit(fromUSDC(100))).to.revertedWith("Ownable: caller is not the owner")
+        await expect(tri.connect(alice).ownerDeposit(fromUSDC(100))).to.revertedWith("Ownable: caller is not the owner")
     })
 
     it("Owner Deposit", async () => {
         // Approve to deposit approver
-        await usdcContract(deployer).approve(aave.address, fromUSDC(1000))
+        await usdcContract(deployer).approve(tri.address, fromUSDC(1000))
 
-        await aave.connect(deployer).ownerDeposit(fromUSDC(1000))
+        await tri.connect(deployer).ownerDeposit(fromUSDC(1000))
 
         // Read Total Assets
-        const total = await aave.totalAssets()
+        const total = await tri.totalAssets()
         console.log(`\n\tTotal USDC Balance: ${toUSDC(total)}`)
     })
 })

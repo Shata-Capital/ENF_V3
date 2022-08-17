@@ -120,7 +120,7 @@ contract Exchange is IExchange, Ownable {
 
         // Transfer token from controller
         TransferHelper.safeTransferFrom(_from, controller, address(this), _amount);
-
+        console.log("Swap transfered: ", _amount);
         // Approve token to router
         IERC20(_from).approve(router, 0);
         IERC20(_from).approve(router, _amount);
@@ -139,6 +139,7 @@ contract Exchange is IExchange, Ownable {
                     block.timestamp + 3600
                 );
             } else {
+                console.log("Swap called: ", paths[_index].path[0]);
                 IUniswapV2Router(router).swapExactTokensForTokensSupportingFeeOnTransferTokens(
                     _amount,
                     0,
@@ -165,6 +166,7 @@ contract Exchange is IExchange, Ownable {
         // Get Swapped output amount
         uint256 outAmt = getBalance(_to, address(this));
 
+        console.log("Out Amount: ", outAmt);
         // Transfer to Controller
         TransferHelper.safeTransfer(_to, controller, outAmt);
 

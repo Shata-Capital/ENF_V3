@@ -142,7 +142,7 @@ contract Aave is Ownable, ISubStrategy {
         IERC20(usdc).approve(curvePool, _amount);
 
         // Calculate LP output expect to avoid front running
-        uint256[4] memory amounts = [0, 0, _amount, 0];
+        uint256[3] memory amounts = [0, _amount, 0];
         uint256 expectOutput = ICurvePoolAave(curvePool).calc_token_amount(amounts, true);
 
         // Calculate Minimum output considering slippage
@@ -220,6 +220,7 @@ contract Aave is Ownable, ISubStrategy {
         // Transfer Reward tokens to controller
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             uint256 balance = IERC20(rewardTokens[i]).balanceOf(address(this));
+            console.log("Harvested crv: ", balance);
             TransferHelper.safeTransfer(rewardTokens[i], controller, balance);
         }
 

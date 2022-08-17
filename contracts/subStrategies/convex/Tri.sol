@@ -14,11 +14,11 @@ import "./interfaces/IPrice.sol";
 
 import "hardhat/console.sol";
 
-contract Compound is Ownable, ISubStrategy {
+contract Tri is Ownable, ISubStrategy {
     using SafeMath for uint256;
 
     // Sub Strategy name
-    string public constant poolName = "Compound V3";
+    string public constant poolName = "Tri V3";
 
     // Curve Pool Address
     address public curvePool;
@@ -142,7 +142,7 @@ contract Compound is Ownable, ISubStrategy {
         IERC20(usdc).approve(curvePool, _amount);
 
         // Calculate LP output expect to avoid front running
-        uint256[4] memory amounts = [0, 0, _amount, 0];
+        uint256[3] memory amounts = [0, _amount, 0];
         // uint256 expectOutput = ICurvePoolTri(curvePool).calc_token_amount(amounts, true);
 
         // Calculate Minimum output considering slippage
