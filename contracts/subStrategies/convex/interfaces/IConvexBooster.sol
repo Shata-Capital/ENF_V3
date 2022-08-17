@@ -19,4 +19,10 @@ interface IConvexBooster {
     function depositAll(uint256 _pid, bool _stake) external returns (bool);
 
     function withdraw(uint256 _pid, uint256 _amount) external returns (bool);
+
+    function withdrawTo(
+        uint256 _pid,
+        uint256 _amount,
+        address _to
+    ) external returns (bool);
 }

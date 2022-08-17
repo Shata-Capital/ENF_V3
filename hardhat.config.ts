@@ -61,6 +61,7 @@ const config: HardhatUserConfig = {
       url: "http://127.0.0.1:8545",
       gasPrice: "auto",
       gasMultiplier: 2,
+      blockGasLimit: 800000
     },
     ropsten: getChainConfig("ropsten"),
     bsc_mainnet: {
@@ -125,7 +126,7 @@ const config: HardhatUserConfig = {
     apiKey: process.env.ETHERSCAN_API_KEY,
   },
   mocha: {
-    timeout: 40000
+    timeout: 80000
   }
 };
 

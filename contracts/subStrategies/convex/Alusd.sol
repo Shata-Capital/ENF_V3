@@ -63,6 +63,8 @@ contract Alusd is Ownable, ISubStrategy {
     // Max Deposit
     uint256 public override maxDeposit;
 
+    event EmergencyWithdraw(uint256 lpAmount);
+
     constructor(
         address _curvePool,
         address _lpToken,
@@ -229,17 +231,14 @@ contract Alusd is Ownable, ISubStrategy {
         Emergency Withdraw LP token from convex booster and send to owner
      */
     function emergencyWithdraw() public onlyOwner {
-        // Get Current Deposit Amt
-        uint256 total = _totalAssets();
-
         // Get Reward pool address
         (, , , address crvRewards, , ) = IConvexBooster(convex).poolInfo(pId);
 
-        // Withdraw Reward
-        IConvexReward(crvRewards).withdraw(total, false);
+        // If totalLP is zero, return
+        if (totalLP == 0) return;
 
-        // Withdraw from Convex Pool
-        IConvexBooster(convex).withdraw(pId, total);
+        // Withdraw Reward
+        IConvexReward(crvRewards).withdrawAllAndUnwrap(false);
 
         // Get LP Token Amt
         uint256 lpWithdrawn = IERC20(lpToken).balanceOf(address(this));
@@ -249,6 +248,9 @@ contract Alusd is Ownable, ISubStrategy {
 
         // Transfer LP token to owner
         TransferHelper.safeTransfer(lpToken, owner(), lpWithdrawn);
+
+        // Emit Event
+        emit EmergencyWithdraw(lpWithdrawn);
     }
 
     /**
@@ -348,5 +350,43 @@ contract Alusd is Ownable, ISubStrategy {
     function setMaxDeposit(uint256 _maxDeposit) public onlyOwner {
         require(_maxDeposit > 0, "INVALID_MAX_DEPOSIT");
         maxDeposit = _maxDeposit;
+    }
+
+    // Add reward token to list
+    function addRewardToken(address _token) public onlyOwner {
+        require(_token != address(0), "ZERO_ADDRESS");
+
+        for (uint256 i = 0; i < rewardTokens.length; i++) {
+            require(rewardTokens[i] != _token, "DUPLICATE_REWARD_TOKEN");
+        }
+        rewardTokens.push(_token);
+    }
+
+    // Remove reward token from list
+    function removeRewardToken(address _token) public onlyOwner {
+        require(_token != address(0), "ZERO_ADDRESS");
+
+        bool succeed;
+
+        for (uint256 i = 0; i < rewardTokens.length; i++) {
+            if (rewardTokens[i] == _token) {
+                rewardTokens[i] = rewardTokens[rewardTokens.length - 1];
+                rewardTokens.pop();
+
+                succeed = true;
+                break;
+            }
+        }
+
+        require(succeed, "REMOVE_REWARD_TOKEN_FAIL");
+    }
+
+    function getPID(address _lpToken) public view returns (uint256) {
+        for (uint256 i = 0; i < IConvexBooster(convex).poolLength(); i++) {
+            (address lpToken_, , , , , ) = IConvexBooster(convex).poolInfo(i);
+
+            if (lpToken_ == _lpToken) return i;
+        }
+        return 0;
     }
 }

@@ -211,6 +211,7 @@ contract Controller is IController, Ownable, ReentrancyGuard {
 
         // Deposit harvested reward
         uint256 assetsHarvested = getBalance(address(this));
+        console.log("USDC harvested: ", assetsHarvested);
         _deposit((assetsHarvested));
 
         emit Harvest(assetsHarvested, block.timestamp);
@@ -374,6 +375,10 @@ contract Controller is IController, Ownable, ReentrancyGuard {
     // Add reward token to list
     function addRewardToken(address _token) public onlyOwner {
         require(_token != address(0), "ZERO_ADDRESS");
+
+        for (uint256 i = 0; i < rewardTokens.length; i++) {
+            require(rewardTokens[i] != _token, "DUPLICATE_REWARD_TOKEN");
+        }
         rewardTokens.push(_token);
     }
 

@@ -75,6 +75,13 @@ contract Exchange is IExchange, Ownable {
         return hash;
     }
 
+    function getPathIndex(address _router, address[] memory _path) public view returns (bytes32) {
+        bytes32 hash = keccak256(abi.encodePacked(_router, _path));
+
+        if (paths[hash].path.length == 0) return 0;
+        else return hash;
+    }
+
     /**
         Remove path from list
      */
@@ -109,7 +116,7 @@ contract Exchange is IExchange, Ownable {
     ) external override returns (uint256) {
         // Get router and version
         address router = paths[_index].router;
-        uint256 version = paths[_index].version;
+        uint256 _version = paths[_index].version;
 
         // Transfer token from controller
         TransferHelper.safeTransferFrom(_from, controller, address(this), _amount);
@@ -119,7 +126,7 @@ contract Exchange is IExchange, Ownable {
         IERC20(_from).approve(router, _amount);
 
         // Swap token using uniswap/sushiswap
-        if (version == 2) {
+        if (_version == 2) {
             // If version 2 use uniswap v2 interface
             if (_to == weth) {
                 // If target token is Weth
@@ -132,7 +139,7 @@ contract Exchange is IExchange, Ownable {
                     block.timestamp + 3600
                 );
             } else {
-                IUniswapV2Router(router).swapExactTokensForETHSupportingFeeOnTransferTokens(
+                IUniswapV2Router(router).swapExactTokensForTokensSupportingFeeOnTransferTokens(
                     _amount,
                     0,
                     paths[_index].path,
