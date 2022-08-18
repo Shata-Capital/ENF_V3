@@ -5,7 +5,6 @@ exports.alcx = "0xdbdb4d16eda451d0503b854cf79d55697f90c8df"
 exports.lqty = "0x6DEA81C8171D0bA574754EF6F8b412F2Ed88c54D"
 exports.stkAAVE = "0x4da27a545c0c5B758a6BA100e3a049001de870f5"
 
-
 exports.uniSwapV2Router = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
 exports.uniSwapV2Factory = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
 
@@ -32,4 +31,6 @@ exports.triLP = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
 exports.triPid = 9
 
 // CRV-WETH-USDC
-exports.crvUsdcPath = ["0xD533a949740bb3306d119CC777fa900bA034cd52", "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"] 
+exports.crvUsdcPath = ["0xD533a949740bb3306d119CC777fa900bA034cd52", "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]
+
+exports.notionBatch = "0x1d1a531cbcb969040da7527bf1092dfc4ff7dd46"

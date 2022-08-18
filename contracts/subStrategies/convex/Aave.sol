@@ -63,7 +63,9 @@ contract Aave is Ownable, ISubStrategy {
     // Max Deposit
     uint256 public override maxDeposit;
 
-    event EmergencyWithdraw(uint256 lpAmount);
+    event OwnerDeposit(uint256 lpAmount);
+
+    event EmergencyWithdraw(uint256 amount);
 
     constructor(
         address _curvePool,
@@ -263,6 +265,8 @@ contract Aave is Ownable, ISubStrategy {
 
         // Call deposit
         _deposit(_amount);
+
+        emit OwnerDeposit(_amount);
     }
 
     /**
