@@ -7,7 +7,7 @@ const { usdcContract, uniV2RouterContract, uniV2FactoryContract, notionBatchCont
 
 const { usdc, weth, crv, uniSwapV2Router, crvUsdcPath, notionBatch } = require("../constants/constants")
 
-let vault, controller, alusd, depositApprover, exchange
+let vault, controller, alusd, depositApprover, exchange, notional
 
 function toEth(num) {
     return utils.formatEther(num)
@@ -59,6 +59,12 @@ describe("ENF Vault test", async () => {
         const Controller = await ethers.getContractFactory("Controller")
         controller = await Controller.deploy(vault.address, usdc, treasury.address)
         console.log(`Controller deployed at: ${controller.address}\n`)
+
+        // Deploy Notional
+        console.log("Deploying Notional Test".green)
+        const Notional = await ethers.getContractFactory("NotionalTest")
+        notional = await Notional.deploy()
+        console.log("Notional Test deployed: ", notional.address)
 
         // // Deploy CUsdc
         // console.log("Deploying CUSDC".green)
@@ -145,16 +151,17 @@ describe("ENF Vault test", async () => {
 
     it("Deposit on notional", async () => {
         // Approve to deposit approver
-        await usdcContract(alice).approve(notionBatch, fromUSDC(100))
+        await usdcContract(alice).approve(notional.address, fromUSDC(100))
 
-        await notionBatchContract(alice).batchBalanceAction(
-            alice.address,
-            [
-                { "actionType": 4, "currencyId": 3, "depositActionAmount": 3000000, "withdrawAmountInternalPrecision": 0 }
-            ],
-            { gasLimit: 30000000 }
-        )
+        // await notionBatchContract(alice).batchBalanceAction(
+        //     alice.address,
+        //     [
+        //         { "actionType": 4, "currencyId": 3, "depositActionAmount": 3000000, "withdrawAmountInternalPrecision": 0 }
+        //     ],
+        //     { gasLimit: 30000000 }
+        // )
 
+        await notional.connect(alice).deposit()
     })
 
     // // Register Alusd SS

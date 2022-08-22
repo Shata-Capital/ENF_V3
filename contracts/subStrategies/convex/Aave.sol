@@ -222,7 +222,6 @@ contract Aave is Ownable, ISubStrategy {
         // Transfer Reward tokens to controller
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             uint256 balance = IERC20(rewardTokens[i]).balanceOf(address(this));
-            console.log("Harvested crv: ", balance);
             TransferHelper.safeTransfer(rewardTokens[i], controller, balance);
         }
 

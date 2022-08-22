@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IUniswapV2Router.sol";
 import "../interfaces/IUniswapV3Router.sol";
+import "../interfaces/IBalancer.sol";
 import "../interfaces/IExchange.sol";
 import "../utils/TransferHelper.sol";
 
@@ -19,7 +20,7 @@ contract Exchange is IExchange, Ownable {
     address public controller;
 
     struct PathInfo {
-        uint256 version;
+        RouterType routerType;
         address router;
         address[] path;
     }
@@ -27,9 +28,16 @@ contract Exchange is IExchange, Ownable {
     mapping(bytes32 => PathInfo) public paths;
     bytes32[] public pathBytes;
 
-    event AddPath(bytes32 hash, uint256 version, address router, address[] path);
+    enum RouterType {
+        uniswapV2,
+        uniswapV3,
+        balancer,
+        curve
+    }
 
-    event RemovePath(bytes32 hash, uint256 version, address router, address[] path);
+    event AddPath(bytes32 hash, RouterType routerType, address router, address[] path);
+
+    event RemovePath(bytes32 hash, RouterType routerType, address router, address[] path);
 
     constructor(address _weth, address _controller) {
         weth = _weth;
@@ -54,7 +62,7 @@ contract Exchange is IExchange, Ownable {
         Add path to list
      */
     function addPath(
-        uint256 _version,
+        RouterType _routerType,
         address _router,
         address[] memory _path
     ) public onlyOwner returns (bytes32) {
@@ -68,9 +76,9 @@ contract Exchange is IExchange, Ownable {
         pathBytes.push(hash);
         paths[hash].path = _path;
         paths[hash].router = _router;
-        paths[hash].version = _version;
+        paths[hash].routerType = _routerType;
 
-        emit AddPath(hash, _version, _router, _path);
+        emit AddPath(hash, _routerType, _router, _path);
 
         return hash;
     }
@@ -101,7 +109,7 @@ contract Exchange is IExchange, Ownable {
             }
         }
 
-        emit RemovePath(index, path.version, path.router, path.path);
+        emit RemovePath(index, path.routerType, path.router, path.path);
     }
 
     /**
@@ -116,61 +124,98 @@ contract Exchange is IExchange, Ownable {
     ) external override returns (uint256) {
         // Get router and version
         address router = paths[_index].router;
-        uint256 _version = paths[_index].version;
+        RouterType _routerType = paths[_index].routerType;
 
         // Transfer token from controller
         TransferHelper.safeTransferFrom(_from, controller, address(this), _amount);
-        console.log("Swap transfered: ", _amount);
         // Approve token to router
         IERC20(_from).approve(router, 0);
         IERC20(_from).approve(router, _amount);
 
         // Swap token using uniswap/sushiswap
-        if (_version == 2) {
+        if (_routerType == RouterType.uniswapV2) {
             // If version 2 use uniswap v2 interface
-            if (_to == weth) {
-                // If target token is Weth
-                // Ignore front-running
-                IUniswapV2Router(router).swapExactTokensForETHSupportingFeeOnTransferTokens(
-                    _amount,
-                    0,
-                    paths[_index].path,
-                    address(this),
-                    block.timestamp + 3600
-                );
-            } else {
-                console.log("Swap called: ", paths[_index].path[0]);
-                IUniswapV2Router(router).swapExactTokensForTokensSupportingFeeOnTransferTokens(
-                    _amount,
-                    0,
-                    paths[_index].path,
-                    address(this),
-                    block.timestamp + 3600
-                );
-            }
-        } else {
-            IUniswapV3Router(router).exactInputSingle(
-                IUniswapV3Router.ExactInputSingleParams({
-                    tokenIn: _from,
-                    tokenOut: _to,
-                    fee: 0,
-                    recipient: address(this),
-                    deadline: block.timestamp + 3600,
-                    amountIn: _amount,
-                    amountOutMinimum: 0,
-                    sqrtPriceLimitX96: 0
-                })
-            );
+            uniV2Swap(_to, _amount, _index);
+        } else if (_routerType == RouterType.uniswapV3) {
+            univ3Swap(router, _from, _to, _amount);
+        } else if (_routerType == RouterType.balancer) {
+            balancerSwap();
         }
 
         // Get Swapped output amount
         uint256 outAmt = getBalance(_to, address(this));
 
-        console.log("Out Amount: ", outAmt);
         // Transfer to Controller
         TransferHelper.safeTransfer(_to, controller, outAmt);
 
         return outAmt;
+    }
+
+    function uniV2Swap(
+        address _to,
+        uint256 _amount,
+        bytes32 _index
+    ) internal {
+        if (_to == weth) {
+            // If target token is Weth
+            // Ignore front-running
+            IUniswapV2Router(paths[_index].router).swapExactTokensForETHSupportingFeeOnTransferTokens(
+                _amount,
+                0,
+                paths[_index].path,
+                address(this),
+                block.timestamp + 3600
+            );
+        } else {
+            IUniswapV2Router(paths[_index].router).swapExactTokensForTokensSupportingFeeOnTransferTokens(
+                _amount,
+                0,
+                paths[_index].path,
+                address(this),
+                block.timestamp + 3600
+            );
+        }
+    }
+
+    function univ3Swap(
+        address router,
+        address _from,
+        address _to,
+        uint256 _amount
+    ) internal {
+        IUniswapV3Router(router).exactInputSingle(
+            IUniswapV3Router.ExactInputSingleParams({
+                tokenIn: _from,
+                tokenOut: _to,
+                fee: 0,
+                recipient: address(this),
+                deadline: block.timestamp + 3600,
+                amountIn: _amount,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+    }
+
+    function balancerSwap(address router, uint256 _amount, bytes32 _index) internal {
+        // Get Path info
+        address memory path[] = paths[_index];
+
+        BatchSwapStep memroy swaps[];
+        
+        // Make swap struct
+        for (uint i = 0; i < path.length; i++) {
+            swaps.push(BatchSwapStep{
+                poolId: path[i],
+                assetInIndex: i,
+                assetOutIndex: i + 1,
+                amount: i == 0? _amount : 0,
+                userData: 0
+            });
+        }
+
+        // Call batch swap in balancer
+        IBalancer(router).batchSwap(0, swaps, path, funds, limits, deadline);
     }
 
     function getBalance(address asset, address account) internal view returns (uint256) {
