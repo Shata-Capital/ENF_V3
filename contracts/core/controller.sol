@@ -174,7 +174,11 @@ contract Controller is IController, Ownable, ReentrancyGuard {
         Harvest from sub strategies, group similar sub strategies in terms of reward token.
         Then exchange it to asset in this vault, deposit again
      */
-    function harvest(uint256[] memory _ssIds, bytes32[] memory _indexes) public onlyOwner returns (uint256) {
+    function harvest(
+        uint256[] memory _ssIds,
+        bytes32[] memory _indexes,
+        address _router
+    ) public onlyOwner returns (uint256) {
         // Indexes must have same length of reward tokens
         require(_indexes.length == rewardTokens.length, "INVALID_INDEX");
         // Loop Through harvest group
@@ -206,7 +210,7 @@ contract Controller is IController, Ownable, ReentrancyGuard {
             IERC20(rewardTokens[i]).approve(exchange, amount);
 
             // Call Swap on exchange
-            IExchange(exchange).swapExactInput(rewardTokens[i], address(asset), _indexes[i], amount);
+            IExchange(exchange).swapExactInput(rewardTokens[i], address(asset), _router, _indexes[i], amount);
         }
 
         // Deposit harvested reward
