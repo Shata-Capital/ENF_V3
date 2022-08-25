@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/ISubStrategy.sol";
 import "../../utils/TransferHelper.sol";
 import "./interfaces/INotionalProxy.sol";
+import "./interfaces/INusdc.sol";
+import "hardhat/console.sol";
 
 contract CUSDC is Ownable, ISubStrategy {
     using SafeMath for uint256;
@@ -21,6 +23,12 @@ contract CUSDC is Ownable, ISubStrategy {
     // USDC token address
     address public usdc;
 
+    // USDC token Decimal
+    uint256 public usdcDecimal = 1e6;
+
+    // NoteToken Decimal
+    uint256 public noteDecimal = 1e8;
+
     // Notional Proxy address
     address public notionalProxy;
 
@@ -30,9 +38,6 @@ contract CUSDC is Ownable, ISubStrategy {
 
     // Constant magnifier
     uint256 public constant magnifier = 10000;
-
-    // Total LP token deposit to convex booster
-    uint256 public totalLP;
 
     // Harvest Gap
     uint256 public override harvestGap;
@@ -70,6 +75,9 @@ contract CUSDC is Ownable, ISubStrategy {
         note = _note;
         nUSDC = _nusdc;
         currencyId = _currencyId;
+
+        // Set Max Deposit as max uin256
+        maxDeposit = type(uint256).max;
     }
 
     /**
@@ -95,7 +103,13 @@ contract CUSDC is Ownable, ISubStrategy {
         Internal view function of total USDC deposited
     */
     function _totalAssets() internal view returns (uint256) {
-        return IERC20(nUSDC).balanceOf(address(this));
+        uint256 nTokenBal = IERC20(nUSDC).balanceOf(address(this));
+
+        uint256 nTokenTotal = IERC20(nUSDC).totalSupply();
+
+        uint256 underlyingDenominated = INusdc(nUSDC).getPresentValueUnderlyingDenominated();
+
+        return ((nTokenBal * underlyingDenominated) * usdcDecimal) / noteDecimal / nTokenTotal;
     }
 
     /**
@@ -139,7 +153,14 @@ contract CUSDC is Ownable, ISubStrategy {
 
         // Get new total assets amount
         uint256 newAmt = _totalAssets();
-        return newAmt - prevAmt;
+
+        // Deposited amt
+        uint256 deposited = newAmt - prevAmt;
+        uint256 minOutput = (_amount * (magnifier - depositSlippage)) / magnifier;
+
+        require(deposited >= minOutput, "DEPOSIT_SLIPPAGE_TOO_BIG");
+
+        return deposited;
     }
 
     /**
@@ -148,14 +169,26 @@ contract CUSDC is Ownable, ISubStrategy {
     function withdraw(uint256 _amount) external override onlyController returns (uint256) {
         // Get Current Deposit Amt
         uint256 total = _totalAssets();
+        uint256 totalLP = IERC20(nUSDC).balanceOf(address(this));
         uint256 lpAmt = (totalLP * _amount) / total;
+        console.log("LP AMt: ", lpAmt);
 
         // Withdraw nUSDC
         _withdraw(lpAmt);
         // Transfer withdrawn USDC to controller
         uint256 asset = IERC20(usdc).balanceOf(address(this));
+        console.log("asset AMt: ", asset);
+
+        // Deposited amt
+        uint256 withdrawn = asset;
+        uint256 minOutput = (_amount * (magnifier - withdrawSlippage)) / magnifier;
+
+        require(withdrawn >= minOutput, "WITHDRAW_SLIPPAGE_TOO_BIG");
+
+        // Transfer USDC to Controller
         TransferHelper.safeTransfer(usdc, controller, asset);
 
+        console.log("asset AMt: ", asset);
         return asset;
     }
 
@@ -170,15 +203,14 @@ contract CUSDC is Ownable, ISubStrategy {
             currencyId: currencyId,
             depositActionAmount: _amount,
             withdrawAmountInternalPrecision: 0,
-            withdrawEntireCashBalance: false,
-            redeemToUnderlying: false
+            withdrawEntireCashBalance: true,
+            redeemToUnderlying: true
         });
 
         // Calls batch balance action
         INotionalProxy(notionalProxy).batchBalanceAction(address(this), actions);
 
-        // Deduct total LP Amount
-        totalLP -= _amount;
+        // Deduct total LP Amount is not needed
     }
 
     /**
@@ -200,6 +232,7 @@ contract CUSDC is Ownable, ISubStrategy {
         Emergency Withdraw LP token from convex booster and send to owner
      */
     function emergencyWithdraw() public onlyOwner {
+        uint256 totalLP = IERC20(nUSDC).balanceOf(address(this));
         // If totalLP is zero, return
         if (totalLP == 0) return;
 

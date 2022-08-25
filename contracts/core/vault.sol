@@ -46,7 +46,6 @@ contract EFVault is ERC20, Ownable, ReentrancyGuard {
     function deposit(uint256 assets, address receiver) public virtual nonReentrant returns (uint256 shares) {
         require(assets != 0, "ZERO_ASSETS");
 
-        // Todo update transfer with trasferhelper and check balance beforehand
         require(getBalance(address(this)) >= assets, "INSUFFICIENT_TRANSFER");
 
         // Need to transfer before minting or ERC777s could reenter.
@@ -58,9 +57,9 @@ contract EFVault is ERC20, Ownable, ReentrancyGuard {
         uint256 newDeposit = IController(controller).deposit(assets);
 
         require(newDeposit > 0, "INVALID_DEPOSIT_SHARES");
-
+        console.log("Taotal: ", totalSupply(), totalDeposit);
         // Calculate share amount to be mint
-        shares = totalSupply() == 0 ? assets : (totalSupply() * newDeposit) / totalDeposit;
+        shares = totalSupply() == 0 || totalDeposit == 0 ? assets : (totalSupply() * newDeposit) / totalDeposit;
 
         // Mint ENF token to receiver
         _mint(receiver, shares);

@@ -14,7 +14,7 @@ contract BalancerV2 is IRouter, Ownable {
 
     string public constant version = "BalancerV2 1";
 
-    address public router;
+    address public balancerVault;
 
     // Struct Pool info for Balancer
     mapping(bytes32 => BatchSwapStep[]) public balancerSwaps;
@@ -28,8 +28,8 @@ contract BalancerV2 is IRouter, Ownable {
 
     event RemoveBalancerSwap(bytes32 hash, IAsset[] assets);
 
-    constructor(address _router) {
-        router = _router;
+    constructor(address _balancerVault) {
+        balancerVault = _balancerVault;
     }
 
     /**
@@ -46,7 +46,10 @@ contract BalancerV2 is IRouter, Ownable {
         // Duplication check
         require(balancerSwaps[hash].length == 0 && balancerAssets[hash].length == 0, "ALREADY_EXIST_PATH");
 
-        balancerSwaps[hash] = _swaps;
+        for (uint8 i = 0; i < _swaps.length; i++) {
+            balancerSwaps[hash].push(_swaps[i]);
+        }
+
         balancerAssets[hash] = _assets;
 
         emit AddBalancerSwap(hash, _assets);
@@ -130,7 +133,8 @@ contract BalancerV2 is IRouter, Ownable {
         for (uint256 i = 0; i < length; i++) {
             limits[i] = i == 0 ? int256(_amount) : int256(0);
         }
+
         // Call batch swap in balancer
-        IBalancer(router).batchSwap(0, swaps, assets, funds, limits, block.timestamp + 3600);
+        IBalancer(balancerVault).batchSwap(0, swaps, assets, funds, limits, block.timestamp + 3600);
     }
 }

@@ -58,7 +58,7 @@ contract NotionalTest {
 
     constructor() {}
 
-    function deposit() public payable returns (uint16) {
+    function deposit() public payable {
         BalanceAction[] memory actions = new BalanceAction[](1);
         actions[0] = BalanceAction({
             actionType: DepositActionType.DepositUnderlyingAndMintNToken,
