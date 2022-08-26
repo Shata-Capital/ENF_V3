@@ -2,7 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../interfaces/ISubStrategy.sol";
@@ -14,7 +15,7 @@ import "./interfaces/IPrice.sol";
 
 import "hardhat/console.sol";
 
-contract Alusd is Ownable, ISubStrategy {
+contract Alusd is OwnableUpgradeable, ISubStrategy {
     using SafeMath for uint256;
 
     // Sub Strategy name
@@ -65,14 +66,19 @@ contract Alusd is Ownable, ISubStrategy {
 
     event EmergencyWithdraw(uint256 lpAmount);
 
-    constructor(
+    constructor(){
+        _disableInitializers();
+    }
+
+    function initialize(
         address _curvePool,
         address _lpToken,
         address _controller,
         address _usdc,
         address _convex,
         uint256 _pId
-    ) {
+    ) initializer public{
+        __Ownable_init();
         curvePool = _curvePool;
         lpToken = _lpToken;
         controller = _controller;

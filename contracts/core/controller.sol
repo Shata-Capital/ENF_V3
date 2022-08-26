@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "../interfaces/IController.sol";
 import "../interfaces/ISubStrategy.sol";
@@ -14,7 +15,7 @@ import "../utils/TransferHelper.sol";
 
 import "hardhat/console.sol";
 
-contract Controller is IController, Ownable, ReentrancyGuard {
+contract Controller is Initializable, IController, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeMath for uint256;
 
     string public constant version = "3.0";
@@ -67,11 +68,18 @@ contract Controller is IController, Ownable, ReentrancyGuard {
 
     event RegisterSubStrategy(address subStrategy, uint256 allocPoint);
 
-    constructor(
+    constructor(){
+        _disableInitializers();
+    }
+
+    function initialize()(
         address _vault,
         ERC20 _asset,
         address _treasury
-    ) {
+    ) initializer public{
+        __Ownable_init();
+        __ReentrancyGuard_init();
+
         vault = _vault;
 
         // Address zero for asset means ETH
