@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../interfaces/IController.sol";
@@ -14,7 +15,7 @@ import "../utils/TransferHelper.sol";
 
 import "hardhat/console.sol";
 
-contract EFVault is ERC20, Ownable, ReentrancyGuard {
+contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for ERC20;
     using SafeMath for uint256;
     using Address for address;
@@ -36,10 +37,19 @@ contract EFVault is ERC20, Ownable, ReentrancyGuard {
     event Withdraw(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
 
     constructor(
+    ) {
+        _disableInitializers();
+    }
+
+    function initialize(
         ERC20 _asset,
         string memory _name,
         string memory _symbol
-    ) ERC20(_name, _symbol) {
+    ) initializer public{
+
+        __ERC20_init(_name, _symbol);
+        __Ownable_init();
+        __ReentrancyGuard_init();
         asset = _asset;
     }
 

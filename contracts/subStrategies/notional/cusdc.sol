@@ -2,7 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../interfaces/ISubStrategy.sol";
@@ -11,7 +12,7 @@ import "./interfaces/INotionalProxy.sol";
 import "./interfaces/INusdc.sol";
 import "hardhat/console.sol";
 
-contract CUSDC is Ownable, ISubStrategy {
+contract CUSDC is OwnableUpgradeable, ISubStrategy {
     using SafeMath for uint256;
 
     // Sub Strategy name
@@ -61,14 +62,19 @@ contract CUSDC is Ownable, ISubStrategy {
 
     event EmergencyWithdraw(uint256 amount);
 
-    constructor(
+    constructor(){
+        _disableInitializers();
+    }
+
+    function initialize(
         address _usdc,
         address _controller,
         address _notionalProxy,
         address _note,
         address _nusdc,
         uint16 _currencyId
-    ) {
+    ) initializer public{
+        __Ownable_init();
         usdc = _usdc;
         controller = _controller;
         notionalProxy = _notionalProxy;
