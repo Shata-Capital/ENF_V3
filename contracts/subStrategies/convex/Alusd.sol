@@ -220,6 +220,8 @@ contract Alusd is Ownable, ISubStrategy {
         // Transfer Reward tokens to controller
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             uint256 balance = IERC20(rewardTokens[i]).balanceOf(address(this));
+            console.log("Bal: ", rewardTokens[i], balance);
+            require(balance > 0, "ZERO_HARVEST_ON_CONVEX");
             TransferHelper.safeTransfer(rewardTokens[i], controller, balance);
         }
 

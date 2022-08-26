@@ -5,9 +5,9 @@ const { utils } = require("ethers");
 
 const { usdcContract, uniV2RouterContract, uniV2FactoryContract, alusdContract, } = require("./externalContracts")
 
-const { usdc, weth, convexBooster, alusdPid, alusdLP, curveAlusd, aaveLP, compoundLP, triLP, crv, stkAAVE, lqty, alcx, uniSwapV2Router, crvUsdcPath } = require("../constants/constants")
+const { usdc, weth, convexBooster, alusdPid, alusdLP, curveAlusd, aaveLP, compoundLP, triLP, crv, stkAAVE, lqty, alcx, uniSwapV2Router, uniSwapV3Router, balancerV2Vault, balancerAssets, balancerSwpas } = require("../constants/constants")
 
-let vault, controller, alusd, depositApprover, exchange
+let vault, controller, alusd, depositApprover, exchange, uniV2
 
 function toEth(num) {
     return utils.formatEther(num)
@@ -71,6 +71,22 @@ describe("ENF Vault test", async () => {
         const Exchange = await ethers.getContractFactory("Exchange")
         exchange = await Exchange.deploy(weth, controller.address)
 
+        // Deploy routers
+        console.log("\nDeploying Uni V2 Router".green)
+        const UniV2 = await ethers.getContractFactory("UniswapV2")
+        uniV2 = await UniV2.deploy(weth, exchange.address)
+        console.log("Uni V2 is deployed: ", uniV2.address)
+
+        console.log("\nDeploying Uni V3 Router".green)
+        const UniV3 = await ethers.getContractFactory("UniswapV3")
+        uniV3 = await UniV3.deploy(uniSwapV3Router, exchange.address)
+        console.log("Uni V3 is deployed: ", uniV3.address)
+
+        console.log("\nDeploying Balancer".green)
+        const Balancer = await ethers.getContractFactory("BalancerV2")
+        balancer = await Balancer.deploy(balancerV2Vault, exchange.address)
+        console.log("Balancer V2 is Deployed: ", balancer.address)
+
         /**
          * Wiring Contracts with each other 
          */
@@ -109,14 +125,16 @@ describe("ENF Vault test", async () => {
         await alusd.addRewardToken(crv)
 
         // Set CRV-USDC to exchange
-        await exchange.addPath(
-            2,
+        await uniV2.addPath(
             uniSwapV2Router,
             [crv, weth, usdc]
         )
 
+        // Set swaps on Balancer
+        await balancer.addPath(balancerSwpas, balancerAssets)
+
         // Get CRV-USDC path index
-        const index = await exchange.getPathIndex(uniSwapV2Router, [crv, weth, usdc])
+        const index = await uniV2.getPathIndex(uniSwapV2Router, [crv, weth, usdc])
         console.log(`\tCRV-USDC Path index: ${index}\n`)
     })
 
@@ -236,10 +254,10 @@ describe("ENF Vault test", async () => {
 
     it("Harvest ALUSD", async () => {
         // Get CRV-USDC path index
-        const index = await exchange.getPathIndex(uniSwapV2Router, [crv, weth, usdc])
+        const index = await uniV2.getPathIndex(uniSwapV2Router, [crv, weth, usdc])
         console.log(`\tCRV-USDC Path index: ${index}\n`)
 
-        await controller.harvest([0], [index])
+        await controller.harvest([0], [index], uniV2.address)
 
         // Read Total Assets
         const total = await vault.totalAssets()

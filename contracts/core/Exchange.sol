@@ -35,7 +35,7 @@ contract Exchange is IExchange, Ownable {
         uint256 _amount
     ) external override returns (uint256) {
         // Transfer token from controller
-        TransferHelper.safeTransferFrom(_from, controller, address(this), _amount);
+        TransferHelper.safeTransferFrom(_from, controller, address(_router), _amount);
         // Approve token to router
         IERC20(_from).approve(_router, 0);
         IERC20(_from).approve(_router, _amount);

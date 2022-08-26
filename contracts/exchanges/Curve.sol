@@ -31,11 +31,27 @@ contract Curve is IRouter, Ownable {
 
     address public weth;
 
+    address public exchange;
+
     event AddCurvePool(address pool, address from, address to, int128 i, int128 j);
     event RemoveCurvePool(address pool, address from, address to, int128 i, int128 j);
 
-    constructor(address _weth) {
+    constructor(address _weth, address _exchange) {
         weth = _weth;
+        exchange = _exchange;
+    }
+
+    /**
+        Only exchange can call
+     */
+    modifier onlyExchange() {
+        require(exchange == _msgSender(), "ONLY_EXCHANGE");
+        _;
+    }
+
+    function setExchange(address _exchange) public onlyOwner {
+        require(exchange != address(0), "ZERO_ADDRESS");
+        exchange = _exchange;
     }
 
     /**
@@ -124,7 +140,7 @@ contract Curve is IRouter, Ownable {
         address _to,
         bytes32 _index,
         uint256 _amount
-    ) external override {
+    ) external override onlyExchange {
         // Check Path from and to
         require(pathFrom(_index) == _from, "INVALID_FROM_ADDRESS");
         require(pathTo(_index) == _to, "INVALID_TO_ADDRESS");

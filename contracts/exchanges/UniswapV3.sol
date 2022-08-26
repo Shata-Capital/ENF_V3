@@ -16,6 +16,8 @@ contract UniswapV3 is IRouter, Ownable {
 
     address public weth;
 
+    address public exchange;
+
     address public router;
 
     // Array for path indices
@@ -28,8 +30,22 @@ contract UniswapV3 is IRouter, Ownable {
 
     event RemoveUniV3Path(bytes32 hash, address[] path);
 
-    constructor(address _router) {
+    constructor(address _router, address _exchange) {
         router = _router;
+        exchange = _exchange;
+    }
+
+    /**
+        Only exchange can call
+     */
+    modifier onlyExchange() {
+        require(exchange == _msgSender(), "ONLY_EXCHANGE");
+        _;
+    }
+
+    function setExchange(address _exchange) public onlyOwner {
+        require(exchange != address(0), "ZERO_ADDRESS");
+        exchange = _exchange;
     }
 
     /**

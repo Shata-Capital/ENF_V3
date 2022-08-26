@@ -57,7 +57,7 @@ contract EFVault is ERC20, Ownable, ReentrancyGuard {
         uint256 newDeposit = IController(controller).deposit(assets);
 
         require(newDeposit > 0, "INVALID_DEPOSIT_SHARES");
-        console.log("Taotal: ", totalSupply(), totalDeposit);
+
         // Calculate share amount to be mint
         shares = totalSupply() == 0 || totalDeposit == 0 ? assets : (totalSupply() * newDeposit) / totalDeposit;
 

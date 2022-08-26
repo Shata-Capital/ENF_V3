@@ -203,6 +203,7 @@ contract Controller is IController, Ownable, ReentrancyGuard {
         // Swap Reward token to asset for deposit
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             uint256 amount = IERC20(rewardTokens[i]).balanceOf(address(this));
+            console.log("Reward Token: ", rewardTokens[i], amount);
             if (amount == 0) continue;
 
             // Approve token to Exchange
@@ -216,6 +217,9 @@ contract Controller is IController, Ownable, ReentrancyGuard {
         // Deposit harvested reward
         uint256 assetsHarvested = getBalance(address(this));
         console.log("USDC harvested: ", assetsHarvested);
+
+        require(assetsHarvested > 0, "ZERO_REWARD_HARVESTED");
+
         _deposit((assetsHarvested));
 
         emit Harvest(assetsHarvested, block.timestamp);

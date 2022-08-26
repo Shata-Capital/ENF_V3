@@ -16,6 +16,8 @@ contract BalancerV2 is IRouter, Ownable {
 
     address public balancerVault;
 
+    address public exchange;
+
     // Struct Pool info for Balancer
     mapping(bytes32 => BatchSwapStep[]) public balancerSwaps;
 
@@ -28,18 +30,28 @@ contract BalancerV2 is IRouter, Ownable {
 
     event RemoveBalancerSwap(bytes32 hash, IAsset[] assets);
 
-    constructor(address _balancerVault) {
+    constructor(address _balancerVault, address _exchange) {
         balancerVault = _balancerVault;
+        exchange = _exchange;
+    }
+
+    /**
+        Only exchange can call
+     */
+    modifier onlyExchange() {
+        require(exchange == _msgSender(), "ONLY_EXCHANGE");
+        _;
+    }
+
+    function setExchange(address _exchange) public onlyOwner {
+        require(exchange != address(0), "ZERO_ADDRESS");
+        exchange = _exchange;
     }
 
     /**
         add balancer swaps and assets 
      */
-    function addBalancerSwap(BatchSwapStep[] memory _swaps, IAsset[] memory _assets)
-        public
-        onlyOwner
-        returns (bytes32)
-    {
+    function addPath(BatchSwapStep[] memory _swaps, IAsset[] memory _assets) public onlyOwner returns (bytes32) {
         // Generate hash index for path
         bytes32 hash = keccak256(abi.encodePacked(_assets));
 
@@ -108,7 +120,7 @@ contract BalancerV2 is IRouter, Ownable {
         address _to,
         bytes32 _index,
         uint256 _amount
-    ) external override {
+    ) external override onlyExchange {
         // Check Path from and to
         require(pathFrom(_index) == _from, "INVALID_FROM_ADDRESS");
         require(pathTo(_index) == _to, "INVALID_TO_ADDRESS");
@@ -123,16 +135,22 @@ contract BalancerV2 is IRouter, Ownable {
         FundManagement memory funds = FundManagement({
             sender: address(this),
             fromInternalBalance: false,
-            recipient: payable(address(this)),
+            recipient: payable(address(exchange)),
             toInternalBalance: false
         });
 
         // Create limit output
         int256[] memory limits = new int256[](length);
 
-        for (uint256 i = 0; i < length; i++) {
-            limits[i] = i == 0 ? int256(_amount) : int256(0);
+        limits[0] = int256(_amount);
+        for (uint256 i = 1; i < length; i++) {
+            limits[i] = int256(0);
         }
+
+        console.log("From Bal", uint256(limits[0]), IERC20(_from).balanceOf(address(this)));
+        // Approve NoteToken to balancer Vault
+        IERC20(_from).approve(balancerVault, 0);
+        IERC20(_from).approve(balancerVault, _amount);
 
         // Call batch swap in balancer
         IBalancer(balancerVault).batchSwap(0, swaps, assets, funds, limits, block.timestamp + 3600);

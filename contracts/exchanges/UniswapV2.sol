@@ -16,6 +16,8 @@ contract UniswapV2 is IRouter, Ownable {
 
     address public weth;
 
+    address public exchange;
+
     // Array for path indices
     bytes32[] public pathBytes;
 
@@ -31,8 +33,22 @@ contract UniswapV2 is IRouter, Ownable {
 
     event RemoveUniV2Path(bytes32 hash, address router, address[] path);
 
-    constructor(address _weth) {
+    constructor(address _weth, address _exchange) {
         weth = _weth;
+        exchange = _exchange;
+    }
+
+    /**
+        Only exchange can call
+     */
+    modifier onlyExchange() {
+        require(exchange == _msgSender(), "ONLY_EXCHANGE");
+        _;
+    }
+
+    function setExchange(address _exchange) public onlyOwner {
+        require(exchange != address(0), "ZERO_ADDRESS");
+        exchange = _exchange;
     }
 
     /**
@@ -48,6 +64,7 @@ contract UniswapV2 is IRouter, Ownable {
         // Register path
         pathBytes.push(hash);
         paths[hash].path = _path;
+        paths[hash].router = _router;
 
         emit AddUniV2Path(hash, _router, _path);
 
@@ -102,13 +119,22 @@ contract UniswapV2 is IRouter, Ownable {
         address _to,
         bytes32 _index,
         uint256 _amount
-    ) external override {
+    ) external override onlyExchange {
         // Get Router Address
         address router = paths[_index].router;
 
         // Check Path from and to
         require(pathFrom(_index) == _from, "INVALID_FROM_ADDRESS");
         require(pathTo(_index) == _to, "INVALID_TO_ADDRESS");
+
+        uint256 balance = IERC20(_from).balanceOf(address(this));
+        console.log("Balance: ", balance);
+
+        require(balance >= _amount, "INSUFFICIENT_TOKEN_TRANSFERED");
+
+        // Approve token
+        IERC20(_from).approve(router, 0);
+        IERC20(_from).approve(router, _amount);
 
         // Ignore front-running
         if (_to == weth) {
@@ -117,7 +143,7 @@ contract UniswapV2 is IRouter, Ownable {
                 _amount,
                 0,
                 paths[_index].path,
-                address(this),
+                address(exchange),
                 block.timestamp + 3600
             );
         } else {
@@ -125,7 +151,7 @@ contract UniswapV2 is IRouter, Ownable {
                 _amount,
                 0,
                 paths[_index].path,
-                address(this),
+                address(exchange),
                 block.timestamp + 3600
             );
         }
