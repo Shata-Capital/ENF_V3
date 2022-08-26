@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -62,7 +62,7 @@ contract CUSDC is OwnableUpgradeable, ISubStrategy {
 
     event EmergencyWithdraw(uint256 amount);
 
-    constructor(){
+    constructor() {
         _disableInitializers();
     }
 
@@ -73,7 +73,7 @@ contract CUSDC is OwnableUpgradeable, ISubStrategy {
         address _note,
         address _nusdc,
         uint16 _currencyId
-    ) initializer public{
+    ) public initializer {
         __Ownable_init();
         usdc = _usdc;
         controller = _controller;

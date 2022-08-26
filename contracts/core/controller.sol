@@ -24,7 +24,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     address public vault;
 
     // Asset for deposit
-    ERC20 public immutable asset;
+    ERC20 public asset;
 
     // Exchange Address
     address public exchange;
@@ -68,15 +68,15 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
 
     event RegisterSubStrategy(address subStrategy, uint256 allocPoint);
 
-    constructor(){
+    constructor() {
         _disableInitializers();
     }
 
-    function initialize()(
+    function initialize(
         address _vault,
         ERC20 _asset,
         address _treasury
-    ) initializer public{
+    ) public initializer {
         __Ownable_init();
         __ReentrancyGuard_init();
 

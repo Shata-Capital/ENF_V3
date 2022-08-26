@@ -16,11 +16,11 @@ import "../utils/TransferHelper.sol";
 import "hardhat/console.sol";
 
 contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
-    using SafeERC20 for ERC20;
+    using SafeERC20 for ERC20Upgradeable;
     using SafeMath for uint256;
     using Address for address;
 
-    ERC20 public immutable asset;
+    ERC20Upgradeable public asset;
 
     string public constant version = "3.0";
 
@@ -36,17 +36,15 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
 
     event Withdraw(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
 
-    constructor(
-    ) {
+    constructor() {
         _disableInitializers();
     }
 
     function initialize(
-        ERC20 _asset,
+        ERC20Upgradeable _asset,
         string memory _name,
         string memory _symbol
-    ) initializer public{
-
+    ) public initializer {
         __ERC20_init(_name, _symbol);
         __Ownable_init();
         __ReentrancyGuard_init();
