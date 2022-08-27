@@ -68,9 +68,6 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
 
     event RegisterSubStrategy(address subStrategy, uint256 allocPoint);
 
-    constructor() {
-        _disableInitializers();
-    }
 
     function initialize(
         address _vault,

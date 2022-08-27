@@ -51,19 +51,19 @@ describe("ENF Vault test", async () => {
         // Deploy Vault
         console.log("Deploying Vault".green)
         const Vault = await ethers.getContractFactory("EFVault")
-        vault = await Vault.deploy(usdc, "ENF LP", "ENF")
+        vault = await upgrades.deployProxy(Vault, [usdc, "ENF LP", "ENF"])
         console.log(`Vault deployed at: ${vault.address}\n`)
 
         // Deploy Controller
         console.log("Deploying Controller".green)
         const Controller = await ethers.getContractFactory("Controller")
-        controller = await Controller.deploy(vault.address, usdc, treasury.address)
+        controller = await upgrades.deployProxy(Controller, [vault.address, usdc, treasury.address])
         console.log(`Controller deployed at: ${controller.address}\n`)
 
         // Deploy Alusd
         console.log("Deploying ALUSD".green)
         const Alusd = await ethers.getContractFactory("Alusd")
-        alusd = await Alusd.deploy(curveAlusd, alusdLP, controller.address, usdc, convexBooster, alusdPid)
+        alusd = await upgrades.deployProxy(Alusd,[curveAlusd, alusdLP, controller.address, usdc, convexBooster, alusdPid])
         console.log(`Alusd deployed at: ${alusd.address}\n`)
 
         // Deploy Exchange
@@ -88,7 +88,7 @@ describe("ENF Vault test", async () => {
         console.log("Balancer V2 is Deployed: ", balancer.address)
 
         /**
-         * Wiring Contracts with each other 
+         * Wiring Contracts with each other
          */
 
         // Set Vault on deposit approver

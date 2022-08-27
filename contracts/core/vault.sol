@@ -4,11 +4,10 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 import "../interfaces/IController.sol";
 import "../utils/TransferHelper.sol";
@@ -16,9 +15,8 @@ import "../utils/TransferHelper.sol";
 import "hardhat/console.sol";
 
 contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
-    using SafeERC20 for ERC20Upgradeable;
+    using SafeERC20Upgradeable for ERC20Upgradeable;
     using SafeMath for uint256;
-    using Address for address;
 
     ERC20Upgradeable public asset;
 
@@ -35,10 +33,6 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
 
     event Withdraw(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
-
-    constructor() {
-        _disableInitializers();
-    }
 
     function initialize(
         ERC20Upgradeable _asset,
@@ -78,7 +72,7 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
     function getBalance(address account) internal view returns (uint256) {
         // Asset is zero address when it is ether
         if (address(asset) == address(0)) return address(account).balance;
-        else return IERC20(asset).balanceOf(account);
+        else return IERC20Upgradeable(asset).balanceOf(account);
     }
 
     function withdraw(uint256 assets, address receiver) public virtual nonReentrant returns (uint256 shares) {

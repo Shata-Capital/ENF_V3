@@ -62,10 +62,6 @@ contract CUSDC is OwnableUpgradeable, ISubStrategy {
 
     event EmergencyWithdraw(uint256 amount);
 
-    constructor() {
-        _disableInitializers();
-    }
-
     function initialize(
         address _usdc,
         address _controller,

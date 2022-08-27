@@ -66,9 +66,6 @@ contract Lusd is OwnableUpgradeable, ISubStrategy {
 
     event EmergencyWithdraw(uint256 lpAmount);
 
-    constructor() {
-        _disableInitializers();
-    }
 
     function initialize(
         address _curvePool,

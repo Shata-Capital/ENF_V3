@@ -68,10 +68,6 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
 
     event EmergencyWithdraw(uint256 amount);
 
-    constructor() {
-        _disableInitializers();
-    }
-
     function initialize(
         address _curvePool,
         address _lpToken,
