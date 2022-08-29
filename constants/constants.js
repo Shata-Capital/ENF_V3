@@ -59,6 +59,8 @@ exports.triPid = 9
 
 // CRV-WETH-USDC
 exports.crvUsdcPath = ["0xD533a949740bb3306d119CC777fa900bA034cd52", "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]
+exports.crvEthPath = ["0xD533a949740bb3306d119CC777fa900bA034cd52", "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"]
+exports.ethUsdcPath = ["0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]
 
 /**
  * Notional Info

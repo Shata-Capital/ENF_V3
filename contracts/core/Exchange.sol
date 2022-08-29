@@ -24,16 +24,26 @@ contract Exchange is IExchange, Ownable {
         weth = _weth;
     }
 
+    receive() external payable {}
+
     /**
-        Swap Exact Input
+        Only controller can call
      */
-    function swapExactInput(
+    modifier onlyController() {
+        require(controller == _msgSender(), "ONLY_CONTROLLER");
+        _;
+    }
+
+    /**
+        Swap Token Exact Input
+     */
+    function swapExactTokenInput(
         address _from,
         address _to,
         address _router,
         bytes32 _index,
         uint256 _amount
-    ) external override returns (uint256) {
+    ) external override onlyController returns (uint256) {
         // Transfer token from controller
         TransferHelper.safeTransferFrom(_from, controller, address(_router), _amount);
         // Approve token to router
@@ -47,7 +57,34 @@ contract Exchange is IExchange, Ownable {
         uint256 outAmt = getBalance(_to, address(this));
 
         // Transfer to Controller
-        TransferHelper.safeTransfer(_to, controller, outAmt);
+        if (_to == weth) TransferHelper.safeTransfer(address(0), controller, outAmt);
+        else TransferHelper.safeTransfer(_to, controller, outAmt);
+
+        return outAmt;
+    }
+
+    /**
+        Swap ETH Exact Input
+     */
+    function swapExactETHInput(
+        address _to,
+        address _router,
+        bytes32 _index,
+        uint256 _amount
+    ) external payable override onlyController returns (uint256) {
+        require(msg.value >= _amount, "INSUFFICIENT_TRANSFER");
+        // Transfer ETH to router
+        TransferHelper.safeTransferETH(_router, _amount);
+
+        // Swap token using uniswap/sushiswap
+        IRouter(_router).swap(weth, _to, _index, _amount);
+
+        // Get Swapped output amount
+        uint256 outAmt = getBalance(_to, address(this));
+
+        // Transfer to Controller
+        if (_to == weth) TransferHelper.safeTransfer(address(0), controller, outAmt);
+        else TransferHelper.safeTransfer(_to, controller, outAmt);
 
         return outAmt;
     }

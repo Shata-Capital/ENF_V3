@@ -173,13 +173,11 @@ contract Cusdc is OwnableUpgradeable, ISubStrategy {
         uint256 total = _totalAssets();
         uint256 totalLP = IERC20(nUSDC).balanceOf(address(this));
         uint256 lpAmt = (totalLP * _amount) / total;
-        console.log("LP AMt: ", lpAmt);
 
         // Withdraw nUSDC
         _withdraw(lpAmt);
         // Transfer withdrawn USDC to controller
         uint256 asset = IERC20(usdc).balanceOf(address(this));
-        console.log("asset AMt: ", asset);
 
         // Deposited amt
         uint256 withdrawn = asset;
@@ -190,7 +188,6 @@ contract Cusdc is OwnableUpgradeable, ISubStrategy {
         // Transfer USDC to Controller
         TransferHelper.safeTransfer(usdc, controller, asset);
 
-        console.log("asset AMt: ", asset);
         return asset;
     }
 

@@ -41,6 +41,8 @@ contract Curve is IRouter, Ownable {
         exchange = _exchange;
     }
 
+    receive() external payable {}
+
     /**
         Only exchange can call
      */

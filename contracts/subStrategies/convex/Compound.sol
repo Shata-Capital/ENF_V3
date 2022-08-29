@@ -151,7 +151,6 @@ contract CompoundV3 is OwnableUpgradeable, ISubStrategy {
         // uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
 
         // Add liquidity to Curve pool
-        console.log("Add: ", _amount, curvePool);
         ICurvePoolCompound(curvePool).add_liquidity(amounts, 0);
 
         // Get LP token amount output

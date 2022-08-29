@@ -38,6 +38,8 @@ contract UniswapV2 is IRouter, Ownable {
         exchange = _exchange;
     }
 
+    receive() external payable {}
+
     /**
         Only exchange can call
      */
@@ -127,20 +129,29 @@ contract UniswapV2 is IRouter, Ownable {
         require(pathFrom(_index) == _from, "INVALID_FROM_ADDRESS");
         require(pathTo(_index) == _to, "INVALID_TO_ADDRESS");
 
-        uint256 balance = IERC20(_from).balanceOf(address(this));
-        console.log("Balance: ", balance);
+        uint256 balance = getBalance(_from, address(this));
 
         require(balance >= _amount, "INSUFFICIENT_TOKEN_TRANSFERED");
 
-        // Approve token
-        IERC20(_from).approve(router, 0);
-        IERC20(_from).approve(router, _amount);
+        // If fromToken is weth, no need to approve
+        if (_from != weth) {
+            // Approve token
+            IERC20(_from).approve(router, 0);
+            IERC20(_from).approve(router, _amount);
+        }
 
         // Ignore front-running
         if (_to == weth) {
             // If target token is Weth
             IUniswapV2Router(router).swapExactTokensForETHSupportingFeeOnTransferTokens(
                 _amount,
+                0,
+                paths[_index].path,
+                address(exchange),
+                block.timestamp + 3600
+            );
+        } else if (_from == weth) {
+            IUniswapV2Router(router).swapExactETHForTokensSupportingFeeOnTransferTokens{value: _amount}(
                 0,
                 paths[_index].path,
                 address(exchange),
@@ -155,5 +166,10 @@ contract UniswapV2 is IRouter, Ownable {
                 block.timestamp + 3600
             );
         }
+    }
+
+    function getBalance(address asset, address account) internal view returns (uint256) {
+        if (address(asset) == address(weth)) return address(account).balance;
+        else return IERC20(asset).balanceOf(account);
     }
 }

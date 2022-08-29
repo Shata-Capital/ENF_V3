@@ -35,6 +35,8 @@ contract UniswapV3 is IRouter, Ownable {
         exchange = _exchange;
     }
 
+    receive() external payable {}
+
     /**
         Only exchange can call
      */

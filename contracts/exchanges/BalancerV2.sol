@@ -35,6 +35,8 @@ contract BalancerV2 is IRouter, Ownable {
         exchange = _exchange;
     }
 
+    receive() external payable {}
+
     /**
         Only exchange can call
      */
@@ -147,7 +149,6 @@ contract BalancerV2 is IRouter, Ownable {
             limits[i] = int256(0);
         }
 
-        console.log("From Bal", uint256(limits[0]), IERC20(_from).balanceOf(address(this)));
         // Approve NoteToken to balancer Vault
         IERC20(_from).approve(balancerVault, 0);
         IERC20(_from).approve(balancerVault, _amount);

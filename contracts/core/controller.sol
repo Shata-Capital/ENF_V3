@@ -27,6 +27,9 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     // Asset for deposit
     ERC20 public asset;
 
+    // WETH address
+    address public weth;
+
     // Exchange Address
     address public exchange;
 
@@ -76,7 +79,8 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     function initialize(
         address _vault,
         ERC20 _asset,
-        address _treasury
+        address _treasury,
+        address _weth
     ) public initializer {
         __Ownable_init();
         __ReentrancyGuard_init();
@@ -87,7 +91,11 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
         asset = _asset;
 
         treasury = _treasury;
+
+        weth = _weth;
     }
+
+    receive() external payable {}
 
     modifier onlyVault() {
         require(vault == _msgSender(), "ONLY_VAULT");
@@ -223,21 +231,24 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
             address fromToken = IRouter(_routers[i]).pathFrom(_indexes[i]);
             address toToken = IRouter(_routers[i]).pathTo(_indexes[i]);
 
-            uint256 amount = IERC20(fromToken).balanceOf(address(this));
-            console.log("Reward fromToken: ", fromToken, amount);
+            uint256 amount = getBalance(address(fromToken), address(this));
+
             if (amount == 0) continue;
 
-            // Approve fromToken to Exchange
-            IERC20(fromToken).approve(exchange, 0);
-            IERC20(fromToken).approve(exchange, amount);
+            if (fromToken == weth) {
+                IExchange(exchange).swapExactETHInput{value: amount}(toToken, _routers[i], _indexes[i], amount);
+            } else {
+                // Approve fromToken to Exchange
+                IERC20(fromToken).approve(exchange, 0);
+                IERC20(fromToken).approve(exchange, amount);
 
-            // Call Swap on exchange
-            IExchange(exchange).swapExactInput(fromToken, toToken, _routers[i], _indexes[i], amount);
+                // Call Swap on exchange
+                IExchange(exchange).swapExactTokenInput(fromToken, toToken, _routers[i], _indexes[i], amount);
+            }
         }
 
         // Deposit harvested reward
-        uint256 assetsHarvested = getBalance(address(this));
-        console.log("USDC harvested: ", assetsHarvested);
+        uint256 assetsHarvested = getBalance(address(asset), address(this));
 
         require(assetsHarvested > 0, "ZERO_REWARD_HARVESTED");
 
@@ -248,9 +259,9 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
         return assetsHarvested;
     }
 
-    function getBalance(address account) internal view returns (uint256) {
-        if (address(asset) == address(0)) return address(account).balance;
-        else return IERC20(asset).balanceOf(account);
+    function getBalance(address _asset, address _account) internal view returns (uint256) {
+        if (address(_asset) == address(0) || address(_asset) == weth) return address(_account).balance;
+        else return IERC20(_asset).balanceOf(_account);
     }
 
     /**
