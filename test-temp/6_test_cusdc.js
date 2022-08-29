@@ -62,7 +62,7 @@ describe("ENF Vault test", async () => {
 
     // Deploy Notional
     console.log("Deploying Notional CUSDC".green)
-    const CUSDC = await ethers.getContractFactory("CUSDC")
+    const CUSDC = await ethers.getContractFactory("Cusdc")
     cusdc = await CUSDC.deploy(
       usdc,
       controller.address,

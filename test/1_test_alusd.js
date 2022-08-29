@@ -257,7 +257,7 @@ describe("ENF Vault test", async () => {
         const index = await uniV2.getPathIndex(uniSwapV2Router, [crv, weth, usdc])
         console.log(`\tCRV-USDC Path index: ${index}\n`)
 
-        await controller.harvest([0], [index], uniV2.address)
+        await controller.harvest([0], [index], [uniV2.address])
 
         // Read Total Assets
         const total = await vault.totalAssets()

@@ -104,14 +104,14 @@ contract BalancerV2 is IRouter, Ownable {
     /**
         Get input token from path
      */
-    function pathFrom(bytes32 index) internal view returns (address) {
+    function pathFrom(bytes32 index) public view override returns (address) {
         return address(balancerAssets[index][0]);
     }
 
     /**
-        Get output token from path
+        Get output token from path 
      */
-    function pathTo(bytes32 index) internal view returns (address) {
+    function pathTo(bytes32 index) public view override returns (address) {
         return address(balancerAssets[index][balancerAssets[index].length - 1]);
     }
 

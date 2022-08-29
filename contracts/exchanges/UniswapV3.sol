@@ -99,14 +99,14 @@ contract UniswapV3 is IRouter, Ownable {
     /**
         Get input token from path
      */
-    function pathFrom(bytes32 index) internal view returns (address) {
+    function pathFrom(bytes32 index) public view override returns (address) {
         return paths[index][0];
     }
 
     /**
         Get output token from path
      */
-    function pathTo(bytes32 index) internal view returns (address) {
+    function pathTo(bytes32 index) public view override returns (address) {
         return paths[index][paths[index].length - 1];
     }
 

@@ -12,7 +12,7 @@ import "./interfaces/INotionalProxy.sol";
 import "./interfaces/INusdc.sol";
 import "hardhat/console.sol";
 
-contract CUSDC is OwnableUpgradeable, ISubStrategy {
+contract Cusdc is OwnableUpgradeable, ISubStrategy {
     using SafeMath for uint256;
 
     // Sub Strategy name

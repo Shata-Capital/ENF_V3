@@ -8,4 +8,8 @@ interface IRouter {
         bytes32 _index,
         uint256 _amount
     ) external;
+
+    function pathFrom(bytes32 index) external view returns (address);
+
+    function pathTo(bytes32 index) external view returns (address);
 }

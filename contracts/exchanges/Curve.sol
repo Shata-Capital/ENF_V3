@@ -121,14 +121,14 @@ contract Curve is IRouter, Ownable {
     /**
         Get input token from path
      */
-    function pathFrom(bytes32 index) internal view returns (address) {
+    function pathFrom(bytes32 index) public view override returns (address) {
         return pools[index].from;
     }
 
     /**
         Get output token from path
      */
-    function pathTo(bytes32 index) internal view returns (address) {
+    function pathTo(bytes32 index) public view override returns (address) {
         return pools[index].to;
     }
 

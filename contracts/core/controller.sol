@@ -11,6 +11,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../interfaces/IController.sol";
 import "../interfaces/ISubStrategy.sol";
 import "../interfaces/IExchange.sol";
+import "../interfaces/IRouter.sol";
 import "../utils/TransferHelper.sol";
 
 import "hardhat/console.sol";
@@ -192,10 +193,11 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     function harvest(
         uint256[] memory _ssIds,
         bytes32[] memory _indexes,
-        address _router
+        address[] memory _routers
     ) public onlyOwner returns (uint256) {
-        // Indexes must have same length of reward tokens
-        require(_indexes.length == rewardTokens.length, "INVALID_INDEX");
+        // Check the length of indexes and routers are the same
+        require(_indexes.length == _routers.length, "NOT_MATCHING_INDEX_ROUTER");
+
         // Loop Through harvest group
         for (uint256 i = 0; i < _ssIds.length; i++) {
             address subStrategy = subStrategies[_ssIds[i]].subStrategy;
@@ -215,18 +217,22 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
 
         require(exchange != address(0), "EXCHANGE_NOT_SET");
 
-        // Swap Reward token to asset for deposit
-        for (uint256 i = 0; i < rewardTokens.length; i++) {
-            uint256 amount = IERC20(rewardTokens[i]).balanceOf(address(this));
-            console.log("Reward Token: ", rewardTokens[i], amount);
+        // Swap fromToken to toToken for deposit
+        for (uint256 i = 0; i < _indexes.length; i++) {
+            // Get fromToken Address
+            address fromToken = IRouter(_routers[i]).pathFrom(_indexes[i]);
+            address toToken = IRouter(_routers[i]).pathTo(_indexes[i]);
+
+            uint256 amount = IERC20(fromToken).balanceOf(address(this));
+            console.log("Reward fromToken: ", fromToken, amount);
             if (amount == 0) continue;
 
-            // Approve token to Exchange
-            IERC20(rewardTokens[i]).approve(exchange, 0);
-            IERC20(rewardTokens[i]).approve(exchange, amount);
+            // Approve fromToken to Exchange
+            IERC20(fromToken).approve(exchange, 0);
+            IERC20(fromToken).approve(exchange, amount);
 
             // Call Swap on exchange
-            IExchange(exchange).swapExactInput(rewardTokens[i], address(asset), _router, _indexes[i], amount);
+            IExchange(exchange).swapExactInput(fromToken, toToken, _routers[i], _indexes[i], amount);
         }
 
         // Deposit harvested reward
