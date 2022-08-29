@@ -5,6 +5,8 @@
   ],
   "rules": {
     "no-call-value": "off",
+    "no-empty-blocks": "off",
+    "avoid-low-level-calls": "off",
     "code-complexity": [
       "error",
       8
