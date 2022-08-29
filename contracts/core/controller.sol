@@ -68,6 +68,9 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
 
     event RegisterSubStrategy(address subStrategy, uint256 allocPoint);
 
+    // constructor() {
+    //     _disableInitializers();
+    // }
 
     function initialize(
         address _vault,
@@ -146,20 +149,27 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
         // Check substrategy length
         require(subStrategies.length > 0, "INVALID_POOL_LENGTH");
 
-        bool defaultWithdrawable = ISubStrategy(subStrategies[defaultWithdrawSS].subStrategy).withdrawable(_amount);
+        // Todo: withdraw as much as possible
+        uint256 toWithdraw = _amount;
 
-        if (defaultWithdrawable) {
-            withdrawAmt = ISubStrategy(subStrategies[defaultWithdrawSS].subStrategy).withdraw(_amount);
-        } else {
-            for (uint256 i = 0; i < subStrategies.length; i++) {
-                // Prevent duplicate checking of default pool
-                if (i == defaultWithdrawSS) continue;
-                bool withdrawable = ISubStrategy(subStrategies[apySort[i]].subStrategy).withdrawable(_amount);
-                if (!withdrawable) continue;
-
-                withdrawAmt = ISubStrategy(subStrategies[apySort[i]].subStrategy).withdraw(_amount);
-                break;
+        for (uint256 i = 0; i < subStrategies.length; i++) {
+            uint256 withdrawable = ISubStrategy(subStrategies[apySort[i]].subStrategy).withdrawable(_amount);
+            if (withdrawable == 0) {
+                // If there is no to withdraw, skip this SS.
+                continue;
+            } else if (withdrawable >= toWithdraw) {
+                // If the SS can withdraw requested amt, then withdraw all and finish
+                withdrawAmt += ISubStrategy(subStrategies[apySort[i]].subStrategy).withdraw(toWithdraw);
+                toWithdraw = 0;
+            } else {
+                // Withdraw max withdrawble amt and
+                withdrawAmt += ISubStrategy(subStrategies[apySort[i]].subStrategy).withdraw(withdrawable);
+                // Todo deduct by withdrawAmt or withdrawable
+                toWithdraw -= withdrawable;
             }
+
+            // If towithdraw equals to zero, break
+            if (toWithdraw == 0) break;
         }
 
         if (withdrawAmt > 0) {
@@ -248,16 +258,17 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
         address from = subStrategies[_fromId].subStrategy;
         address to = subStrategies[_toId].subStrategy;
 
-        bool withdrawable = ISubStrategy(from).withdrawable(_amount);
+        uint256 withdrawable = ISubStrategy(from).withdrawable(_amount);
 
-        require(withdrawable, "NOT_WITHDRAWABLE_AMOUNT_FROM");
-        uint256 withdrawAmt = ISubStrategy(from).withdraw(_amount);
+        require(withdrawable > 0, "NOT_WITHDRAWABLE_AMOUNT_FROM");
+
+        uint256 withdrawAmt = ISubStrategy(from).withdraw(withdrawable);
 
         // Transfer asset to substrategy
-        TransferHelper.safeTransfer(address(asset), to, _amount);
+        TransferHelper.safeTransfer(address(asset), to, withdrawAmt);
 
         // Calls deposit function on SubStrategy
-        uint256 depositAmt = ISubStrategy(to).deposit(_amount);
+        uint256 depositAmt = ISubStrategy(to).deposit(withdrawAmt);
 
         emit MoveFund(from, to, withdrawAmt, depositAmt, block.timestamp);
     }
@@ -297,6 +308,8 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
      */
     function setAPYSort(uint256[] memory _apySort) public onlyOwner {
         require(_apySort.length == subStrategies.length, "INVALID_APY_SORT");
+        require(_apySort[0] == defaultWithdrawSS, "FIRST_SS_MUST_BE_DEFAULT");
+
         apySort = _apySort;
     }
 
@@ -358,6 +371,9 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
 
         // Recalculate total alloc point
         totalAllocPoint += _allocPoint;
+
+        // Add this SSID to ApySort Array
+        apySort.push(subStrategies.length - 1);
 
         emit RegisterSubStrategy(_subStrategy, _allocPoint);
     }

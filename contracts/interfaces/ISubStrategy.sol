@@ -12,7 +12,7 @@ interface ISubStrategy {
 
     function maxDeposit() external view returns (uint256);
 
-    function withdrawable(uint256 _amount) external view returns (bool);
+    function withdrawable(uint256 _amount) external view returns (uint256);
 
     function latestHarvest() external view returns (uint256);
 

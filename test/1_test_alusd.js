@@ -63,7 +63,7 @@ describe("ENF Vault test", async () => {
         // Deploy Alusd
         console.log("Deploying ALUSD".green)
         const Alusd = await ethers.getContractFactory("Alusd")
-        alusd = await upgrades.deployProxy(Alusd,[curveAlusd, alusdLP, controller.address, usdc, convexBooster, alusdPid])
+        alusd = await upgrades.deployProxy(Alusd, [curveAlusd, alusdLP, controller.address, usdc, convexBooster, alusdPid])
         console.log(`Alusd deployed at: ${alusd.address}\n`)
 
         // Deploy Exchange
@@ -214,7 +214,7 @@ describe("ENF Vault test", async () => {
     })
 
     it("Withdraw 10 USDC will be reverted", async () => {
-        await expect(vault.connect(alice).withdraw(fromUSDC(10), alice.address)).to.revertedWith("INVALID_WITHDRAWN_SHARES")
+        await expect(vault.connect(alice).withdraw(fromUSDC(10), alice.address)).to.revertedWith("EXCEED_TOTAL_DEPOSIT")
     })
 
     it("Deposit 1000 USDC", async () => {

@@ -271,19 +271,19 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     /**
         Check withdrawable status of required amount
      */
-    function withdrawable(uint256 _amount) external view override returns (bool) {
+    function withdrawable(uint256 _amount) external view override returns (uint256) {
         // Get Current Deposit Amt
         uint256 total = _totalAssets();
 
-        // If requested amt is bigger than total asset, return false
-        if (_amount > total) return false;
+        // If requested amt is bigger than total asset, try withdraw total
+        if (_amount > total) _amount = total;
 
         uint256 lpAmt = (totalLP * _amount) / total;
         uint256 expectedOutput = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, lpAmt, tokenId);
 
         // If expected output is
-        if (expectedOutput >= (_amount * (magnifier - withdrawSlippage)) / magnifier) return true;
-        else return false;
+        if (expectedOutput >= (_amount * (magnifier - withdrawSlippage)) / magnifier) return _amount;
+        else return 0;
     }
 
     //////////////////////////////////////////////////

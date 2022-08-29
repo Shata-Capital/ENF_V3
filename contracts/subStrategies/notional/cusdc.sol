@@ -250,14 +250,14 @@ contract CUSDC is OwnableUpgradeable, ISubStrategy {
     /**
         Check withdrawable status of required amount
      */
-    function withdrawable(uint256 _amount) external view override returns (bool) {
+    function withdrawable(uint256 _amount) external view override returns (uint256) {
         // Get Current Deposit Amt
         uint256 total = _totalAssets();
 
         // If requested amt is bigger than total asset, return false
-        if (_amount > total) return false;
+        if (_amount > total) return total;
         // Todo Have to check withdrawable amount
-        else return true;
+        else return _amount;
     }
 
     /**
