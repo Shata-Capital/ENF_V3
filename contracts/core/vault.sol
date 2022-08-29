@@ -30,9 +30,16 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
 
     uint256 public maxWithdraw;
 
+    bool public paused;
+
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
 
     event Withdraw(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
+
+    modifier unPaused() {
+        require(!paused, "PAUSED");
+        _;
+    }
 
     function initialize(
         ERC20Upgradeable _asset,
@@ -43,10 +50,13 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
         __Ownable_init();
         __ReentrancyGuard_init();
         asset = _asset;
+        maxDeposit = type(uint256).max;
+        maxWithdraw = type(uint256).max;
     }
 
-    function deposit(uint256 assets, address receiver) public virtual nonReentrant returns (uint256 shares) {
+    function deposit(uint256 assets, address receiver) public virtual nonReentrant unPaused returns (uint256 shares) {
         require(assets != 0, "ZERO_ASSETS");
+        require(assets <= maxDeposit, "EXCEED_ONE_TIME_MAX_DEPOSIT");
 
         require(getBalance(address(this)) >= assets, "INSUFFICIENT_TRANSFER");
 
@@ -75,8 +85,9 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
         else return IERC20Upgradeable(asset).balanceOf(account);
     }
 
-    function withdraw(uint256 assets, address receiver) public virtual nonReentrant returns (uint256 shares) {
+    function withdraw(uint256 assets, address receiver) public virtual nonReentrant unPaused returns (uint256 shares) {
         require(assets != 0, "ZERO_ASSETS");
+        require(assets <= maxWithdraw, "EXCEED_ONE_TIME_MAX_WITHDRAW");
 
         // Total Assets amount until now
         uint256 totalDeposit = IController(controller).totalAssets();
@@ -87,7 +98,7 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
         require(withdrawn > 0, "INVALID_WITHDRAWN_SHARES");
 
         // Calculate share amount to be burnt
-        shares = (totalSupply() * withdrawn) / totalDeposit;
+        shares = (totalSupply() * assets) / totalDeposit;
 
         _burn(receiver, shares);
 
@@ -110,9 +121,9 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
         return supply == 0 ? shares : (shares / supply) * totalAssets();
     }
 
-    /*//////////////////////////////////////////////////////////////
-                     SET CONFIGURE LOGIC
-    //////////////////////////////////////////////////////////////*/
+    ///////////////////////////////////////////////////////////////
+    //                 SET CONFIGURE LOGIC                       //
+    ///////////////////////////////////////////////////////////////
 
     function setMaxDeposit(uint256 _maxDeposit) public onlyOwner {
         require(_maxDeposit > 0, "INVALID_MAX_DEPOSIT");
@@ -132,5 +143,14 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
     function setDepositApprover(address _approver) public onlyOwner {
         require(_approver != address(0), "INVALID_ZERO_ADDRESS");
         depositApprover = _approver;
+    }
+
+    ////////////////////////////////////////////////////////////////////
+    //                      PAUSE/RESUME                              //
+    ////////////////////////////////////////////////////////////////////
+
+    function pause() public onlyOwner {
+        require(!paused, "CURRENTLY_PUSED");
+        paused = true;
     }
 }
