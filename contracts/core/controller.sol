@@ -48,9 +48,6 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     // Sub Strategy List
     SSInfo[] public subStrategies;
 
-    // Reward Token list
-    address[] public rewardTokens;
-
     uint256[] public apySort;
 
     uint256 public totalAllocPoint;
@@ -134,14 +131,14 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
             for (uint256 i = 0; i < subStrategies.length; i++) {
                 // Calculate how much to deposit in one sub strategy
                 uint256 amountForSS = (_amount * subStrategies[i].allocPoint) / totalAllocPoint;
-
+                console.log("SS Amt: ", amountForSS, _amount);
                 if (amountForSS == 0) continue;
 
                 // Transfer asset to substrategy
-                TransferHelper.safeTransfer(address(asset), subStrategies[i].subStrategy, _amount);
+                TransferHelper.safeTransfer(address(asset), subStrategies[i].subStrategy, amountForSS);
 
                 // Calls deposit function on SubStrategy
-                uint256 amount = ISubStrategy(subStrategies[i].subStrategy).deposit(_amount);
+                uint256 amount = ISubStrategy(subStrategies[i].subStrategy).deposit(amountForSS);
                 depositAmt += amount;
             }
         }
@@ -232,7 +229,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
             address toToken = IRouter(_routers[i]).pathTo(_indexes[i]);
 
             uint256 amount = getBalance(address(fromToken), address(this));
-
+            console.log("From Token: ", fromToken, amount);
             if (amount == 0) continue;
 
             if (fromToken == weth) {
@@ -416,34 +413,5 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     function setDefaultWithdrawSS(uint8 _ssId) public onlyOwner {
         require(_ssId < subStrategies.length, "INVALID_SS_ID");
         defaultWithdrawSS = _ssId;
-    }
-
-    // Add reward token to list
-    function addRewardToken(address _token) public onlyOwner {
-        require(_token != address(0), "ZERO_ADDRESS");
-
-        for (uint256 i = 0; i < rewardTokens.length; i++) {
-            require(rewardTokens[i] != _token, "DUPLICATE_REWARD_TOKEN");
-        }
-        rewardTokens.push(_token);
-    }
-
-    // Remove reward token from list
-    function removeRewardToken(address _token) public onlyOwner {
-        require(_token != address(0), "ZERO_ADDRESS");
-
-        bool succeed;
-
-        for (uint256 i = 0; i < rewardTokens.length; i++) {
-            if (rewardTokens[i] == _token) {
-                rewardTokens[i] = rewardTokens[rewardTokens.length - 1];
-                rewardTokens.pop();
-
-                succeed = true;
-                break;
-            }
-        }
-
-        require(succeed, "REMOVE_REWARD_TOKEN_FAIL");
     }
 }

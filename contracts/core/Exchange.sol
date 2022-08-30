@@ -56,6 +56,9 @@ contract Exchange is IExchange, Ownable {
         // Get Swapped output amount
         uint256 outAmt = getBalance(_to, address(this));
 
+        console.log("Ex: ", outAmt);
+        console.log("Weth: ", IERC20(weth).balanceOf(address(this)));
+
         // Transfer to Controller
         if (_to == weth) TransferHelper.safeTransfer(address(0), controller, outAmt);
         else TransferHelper.safeTransfer(_to, controller, outAmt);

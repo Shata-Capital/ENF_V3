@@ -103,9 +103,6 @@ describe("ENF Vault test", async () => {
         console.log("Withdraw slippage set")
 
         // Set CRV token for harvest token
-        await controller.addRewardToken(crv)
-
-        // Set CRV token for harvest token
         await compound.addRewardToken(crv)
 
         // Set CRV-USDC to exchange
@@ -223,10 +220,6 @@ describe("ENF Vault test", async () => {
     ////////////////////////////////////////////////
     //                  HARVEST                   //
     ////////////////////////////////////////////////
-    it("Add CRV will be reverted with Duplication error", async () => {
-        await expect(controller.addRewardToken(crv)).to.be.revertedWith("DUPLICATE_REWARD_TOKEN")
-    })
-
     // it("Pass Time and block number", async () => {
     //     await network.provider.send("evm_increaseTime", [3600 * 24 * 60]);
     //     await network.provider.send("evm_mine");

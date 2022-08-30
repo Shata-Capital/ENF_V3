@@ -25,10 +25,10 @@ contract Cusdc is OwnableUpgradeable, ISubStrategy {
     address public usdc;
 
     // USDC token Decimal
-    uint256 public usdcDecimal = 1e6;
+    uint256 public usdcDecimal;
 
     // NoteToken Decimal
-    uint256 public noteDecimal = 1e8;
+    uint256 public noteDecimal;
 
     // Notional Proxy address
     address public notionalProxy;
@@ -80,6 +80,9 @@ contract Cusdc is OwnableUpgradeable, ISubStrategy {
 
         // Set Max Deposit as max uin256
         maxDeposit = type(uint256).max;
+
+        usdcDecimal = 1e6;
+        noteDecimal = 1e8;
     }
 
     /**

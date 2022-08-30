@@ -18,8 +18,10 @@ contract BalancerV2 is IRouter, Ownable {
 
     address public exchange;
 
+    address public weth;
+
     // Struct Pool info for Balancer
-    mapping(bytes32 => BatchSwapStep[]) public balancerSwaps;
+    mapping(bytes32 => bytes32[]) public poolIds;
 
     mapping(bytes32 => IAsset[]) public balancerAssets;
 
@@ -30,9 +32,14 @@ contract BalancerV2 is IRouter, Ownable {
 
     event RemoveBalancerSwap(bytes32 hash, IAsset[] assets);
 
-    constructor(address _balancerVault, address _exchange) {
+    constructor(
+        address _balancerVault,
+        address _exchange,
+        address _weth
+    ) {
         balancerVault = _balancerVault;
         exchange = _exchange;
+        weth = _weth;
     }
 
     receive() external payable {}
@@ -53,17 +60,17 @@ contract BalancerV2 is IRouter, Ownable {
     /**
         add balancer swaps and assets 
      */
-    function addPath(BatchSwapStep[] memory _swaps, IAsset[] memory _assets) public onlyOwner returns (bytes32) {
+    function addPath(bytes32[] memory _pools, IAsset[] memory _assets) public onlyOwner returns (bytes32) {
         // Generate hash index for path
         bytes32 hash = keccak256(abi.encodePacked(_assets));
 
         // Duplication check
-        require(balancerSwaps[hash].length == 0 && balancerAssets[hash].length == 0, "ALREADY_EXIST_PATH");
+        require(poolIds[hash].length == 0 && balancerAssets[hash].length == 0, "ALREADY_EXIST_PATH");
 
-        for (uint8 i = 0; i < _swaps.length; i++) {
-            balancerSwaps[hash].push(_swaps[i]);
-        }
-
+        // for (uint8 i = 0; i < _pools.length; i++) {
+        //     poolIds[hash].push(_pools[i]);
+        // }
+        poolIds[hash] = _pools;
         balancerAssets[hash] = _assets;
 
         emit AddBalancerSwap(hash, _assets);
@@ -89,7 +96,7 @@ contract BalancerV2 is IRouter, Ownable {
 
         // Delete path record from mapping
         delete balancerAssets[index];
-        delete balancerSwaps[index];
+        delete poolIds[index];
 
         // Remove index in the list
         for (uint256 i = 0; i < pathBytes.length; i++) {
@@ -127,8 +134,11 @@ contract BalancerV2 is IRouter, Ownable {
         require(pathFrom(_index) == _from, "INVALID_FROM_ADDRESS");
         require(pathTo(_index) == _to, "INVALID_TO_ADDRESS");
 
+        // Require token amount transfered
+        require(getBalance(_from, address(this)) >= _amount, "INSUFFICIENT_TOKEN_TRANSFERED");
+
         // Get Swaps and assets info from registered
-        BatchSwapStep[] memory swaps = balancerSwaps[_index];
+        bytes32[] memory pools = poolIds[_index];
         IAsset[] memory assets = balancerAssets[_index];
 
         uint256 length = assets.length;
@@ -140,6 +150,18 @@ contract BalancerV2 is IRouter, Ownable {
             recipient: payable(address(exchange)),
             toInternalBalance: false
         });
+
+        // Create BalancerSwaps
+        BatchSwapStep[] memory swaps = new BatchSwapStep[](pools.length);
+        for (uint256 i = 0; i < pools.length; i++) {
+            swaps[i] = BatchSwapStep({
+                poolId: pools[i],
+                assetInIndex: i,
+                assetOutIndex: i + 1,
+                amount: i == 0 ? _amount : 0,
+                userData: ""
+            });
+        }
 
         // Create limit output
         int256[] memory limits = new int256[](length);
@@ -155,5 +177,10 @@ contract BalancerV2 is IRouter, Ownable {
 
         // Call batch swap in balancer
         IBalancer(balancerVault).batchSwap(0, swaps, assets, funds, limits, block.timestamp + 3600);
+    }
+
+    function getBalance(address asset, address account) internal view returns (uint256) {
+        if (address(asset) == address(weth)) return address(account).balance;
+        else return IERC20(asset).balanceOf(account);
     }
 }
