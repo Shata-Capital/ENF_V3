@@ -145,7 +145,7 @@ describe("ENF Vault test", async () => {
     await balancer.addPath(balancerETHToUSDCSwap)
 
     // Get CRV-USDC path index
-    const index = await uniV2.getPathIndex(uniSwapV2Router, [note, weth, usdc])
+    const index = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath)
     console.log(`\tNOTE-USDC Path index: ${index}\n`)
   })
 
@@ -258,26 +258,52 @@ describe("ENF Vault test", async () => {
     await network.provider.send("evm_mine");
   })
 
-  // it("Harvest CUSDC", async () => {
-  //   // Get NOTE-USDC path index
-  //   const index = await balancerBatch.getPathIndex(balancerNoteToUSDCAssets)
-  //   console.log(`\tNOTE-USDC Path index: ${index}\n`)
+  it("Harvest CUSDC", async () => {
+    // Get NOTE-USDC path index
+    const index = await balancerBatch.getPathIndex(balancerNoteToUSDCAssets)
+    console.log(`\tNOTE-USDC Path index: ${index}\n`)
 
-  //   await controller.harvest([0], [index], [balancerBatch.address])
+    await controller.harvest([0], [index], [balancerBatch.address])
 
-  //   // Read Total Assets
-  //   const total = await vault.totalAssets()
-  //   console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
-  // })
+    // Read Total Assets
+    const total = await vault.totalAssets()
+    console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
+  })
 
-  it("Harvest CUSDC multi-swap", async () => {
+  it("Pass Time and block number", async () => {
+    await network.provider.send("evm_increaseTime", [3600 * 24 * 1]);
+    await network.provider.send("evm_mine");
+  })
+
+  it("Harvest CUSDC Balancer multi-swap", async () => {
     // Get NOTE-USDC path index
     const index0 = await balancer.getPathIndex(balancerNoteToETHSwap)
     const index1 = await balancer.getPathIndex(balancerETHToUSDCSwap)
     // const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath)
-    console.log(`\tNOTE-ETH Path index: ${index0}, ${index1}\n`)
+    console.log(`\tNOTE-ETH Balancer Path index: ${index0}\n`)
+    console.log(`\tETH-USDC UniV2 Path index: ${index1}\n`)
 
     await controller.harvest([0], [index0, index1], [balancer.address, balancer.address])
+
+    // Read Total Assets
+    const total = await vault.totalAssets()
+    console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
+  })
+
+  it("Pass Time and block number", async () => {
+    await network.provider.send("evm_increaseTime", [3600 * 24 * 1]);
+    await network.provider.send("evm_mine");
+  })
+
+  it("Harvest CUSDC Balancer-Univ2 multi-swap", async () => {
+    // Get NOTE-USDC path index
+    const index0 = await balancer.getPathIndex(balancerNoteToETHSwap)
+    // const index1 = await balancer.getPathIndex(balancerETHToUSDCSwap)
+    const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath)
+    console.log(`\tNOTE-ETH Balancer Path index: ${index0}\n`)
+    console.log(`\tETH-USDC UniV2 Path index: ${index1}\n`)
+
+    await controller.harvest([0], [index0, index1], [balancer.address, uniV2.address])
 
     // Read Total Assets
     const total = await vault.totalAssets()
