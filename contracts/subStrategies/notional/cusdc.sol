@@ -224,6 +224,7 @@ contract Cusdc is OwnableUpgradeable, ISubStrategy {
 
         // Transfer Reward tokens to controller
         uint256 noteBal = IERC20(note).balanceOf(address(this));
+        console.log("NOte harvested: ", noteBal);
         TransferHelper.safeTransfer(note, controller, noteBal);
 
         // Update latest block timestamp

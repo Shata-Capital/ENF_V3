@@ -56,7 +56,7 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
 
     function deposit(uint256 assets, address receiver) public virtual nonReentrant unPaused returns (uint256 shares) {
         require(assets != 0, "ZERO_ASSETS");
-        require(assets <= maxDeposit, "EXCEED_ONE_TIME_MAX_DEPOSIT");
+        require(convertToAssets(balanceOf(msg.sender)) + assets <= maxDeposit, "EXCEED_MAX_DEPOSIT");
 
         require(getBalance(address(this)) >= assets, "INSUFFICIENT_TRANSFER");
 
@@ -154,7 +154,12 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
     ////////////////////////////////////////////////////////////////////
 
     function pause() public onlyOwner {
-        require(!paused, "CURRENTLY_PUSED");
+        require(!paused, "CURRENTLY_PAUSED");
         paused = true;
+    }
+
+    function resume() public onlyOwner {
+        require(paused, "CURRENTLY_RUNNING");
+        paused = false;
     }
 }

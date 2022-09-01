@@ -9,6 +9,20 @@ struct BatchSwapStep {
     bytes userData;
 }
 
+enum SwapKind {
+    GIVEN_IN,
+    GIVEN_OUT
+}
+
+struct SingleSwap {
+    bytes32 poolId;
+    SwapKind kind;
+    IAsset assetIn;
+    IAsset assetOut;
+    uint256 amount;
+    bytes userData;
+}
+
 struct FundManagement {
     address sender;
     bool fromInternalBalance;
@@ -29,4 +43,11 @@ interface IBalancer {
         int256[] memory limits,
         uint256 deadline
     ) external returns (int256[] memory assetDeltas);
+
+    function swap(
+        SingleSwap memory singleSwap,
+        FundManagement memory funds,
+        uint256 limit,
+        uint256 deadline
+    ) external payable returns (uint256);
 }

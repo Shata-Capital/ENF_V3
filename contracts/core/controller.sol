@@ -211,21 +211,23 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
                 Check harvest gap, it must passed over the gap since last harvested
                 Harvest gap and latest harvest timestamp is maintained on sub strategy
              */
-            require(
-                ISubStrategy(subStrategy).latestHarvest() + ISubStrategy(subStrategy).harvestGap() <= block.timestamp,
-                "RECENTLY_HARVESTED"
-            );
-
+            if (ISubStrategy(subStrategy).latestHarvest() + ISubStrategy(subStrategy).harvestGap() > block.timestamp)
+                continue;
             // Harvest from Individual Sub Strategy
             ISubStrategy(subStrategy).harvest();
+            console.log("Harvestd");
         }
 
         require(exchange != address(0), "EXCHANGE_NOT_SET");
 
         // Swap fromToken to toToken for deposit
         for (uint256 i = 0; i < _indexes.length; i++) {
+            // If index of path is not registered, revert it
+            require(_indexes[i] != 0, "NON_REGISTERED_PATH");
+
             // Get fromToken Address
             address fromToken = IRouter(_routers[i]).pathFrom(_indexes[i]);
+            // Get toToken Address
             address toToken = IRouter(_routers[i]).pathTo(_indexes[i]);
 
             uint256 amount = getBalance(address(fromToken), address(this));

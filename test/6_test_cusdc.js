@@ -5,9 +5,9 @@ const { utils } = require("ethers");
 
 const { usdcContract, uniV2RouterContract, uniV2FactoryContract } = require("../test/externalContracts")
 
-const { usdc, weth, notionalProxy, note, nusdc, currencyId, uniSwapV2Router, uniSwapV3Router, ethUsdcPath, balancerV2Vault, balancerNoteToUSDCAssets, balancerNoteToUSDCPools, balancerNoteToETHPools, balancerNoteToETHAssets } = require("../constants/constants")
+const { usdc, weth, notionalProxy, note, nusdc, currencyId, uniSwapV2Router, uniSwapV3Router, ethUsdcPath, balancerV2Vault, balancerETHToUSDCSwap, balancerNoteToETHSwap, balancerNoteToUSDCAssets, balancerNoteToUSDCPools, balancerNoteToETHPools, balancerNoteToETHAssets } = require("../constants/constants")
 
-let vault, controller, depositApprover, exchange, cusdc, uniV2, uniV3, balancer, curve
+let vault, controller, depositApprover, exchange, cusdc, uniV2, uniV3, balancer, balancerBatch, curve
 
 function toEth(num) {
   return utils.formatEther(num)
@@ -97,6 +97,11 @@ describe("ENF Vault test", async () => {
     balancer = await Balancer.deploy(balancerV2Vault, exchange.address, weth)
     console.log("Balancer V2 is Deployed: ", balancer.address)
 
+    console.log("\nDeploying Balancer BatchSwap".green)
+    const BalancerBatch = await ethers.getContractFactory("BalancerBatchV2")
+    balancerBatch = await BalancerBatch.deploy(balancerV2Vault, exchange.address, weth)
+    console.log("Balancer Batch V2 is Deployed: ", balancerBatch.address)
+
     /**
      * Wiring Contracts with each other 
      */
@@ -135,8 +140,9 @@ describe("ENF Vault test", async () => {
     )
 
     // Set swaps on Balancer
-    await balancer.addPath(balancerNoteToUSDCPools, balancerNoteToUSDCAssets)
-    await balancer.addPath(balancerNoteToETHPools, balancerNoteToETHAssets)
+    await balancerBatch.addPath(balancerNoteToUSDCPools, balancerNoteToUSDCAssets)
+    await balancer.addPath(balancerNoteToETHSwap)
+    await balancer.addPath(balancerETHToUSDCSwap)
 
     // Get CRV-USDC path index
     const index = await uniV2.getPathIndex(uniSwapV2Router, [note, weth, usdc])
@@ -254,10 +260,10 @@ describe("ENF Vault test", async () => {
 
   // it("Harvest CUSDC", async () => {
   //   // Get NOTE-USDC path index
-  //   const index = await balancer.getPathIndex(balancerNoteToUSDCAssets)
+  //   const index = await balancerBatch.getPathIndex(balancerNoteToUSDCAssets)
   //   console.log(`\tNOTE-USDC Path index: ${index}\n`)
 
-  //   await controller.harvest([0], [index], [balancer.address])
+  //   await controller.harvest([0], [index], [balancerBatch.address])
 
   //   // Read Total Assets
   //   const total = await vault.totalAssets()
@@ -266,11 +272,12 @@ describe("ENF Vault test", async () => {
 
   it("Harvest CUSDC multi-swap", async () => {
     // Get NOTE-USDC path index
-    const index0 = await balancer.getPathIndex(balancerNoteToETHAssets)
-    const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath)
-    console.log(`\tNOTE-ETH Path index: ${index0}\n`)
+    const index0 = await balancer.getPathIndex(balancerNoteToETHSwap)
+    const index1 = await balancer.getPathIndex(balancerETHToUSDCSwap)
+    // const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath)
+    console.log(`\tNOTE-ETH Path index: ${index0}, ${index1}\n`)
 
-    await controller.harvest([0], [index0, index1], [balancer.address, uniV2.address])
+    await controller.harvest([0], [index0, index1], [balancer.address, balancer.address])
 
     // Read Total Assets
     const total = await vault.totalAssets()

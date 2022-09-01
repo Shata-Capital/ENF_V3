@@ -9,10 +9,10 @@ import "./interfaces/IBalancer.sol";
 import "../utils/TransferHelper.sol";
 import "../interfaces/IRouter.sol";
 
-contract BalancerV2 is IRouter, Ownable {
+contract BalancerBatchV2 is IRouter, Ownable {
     using SafeMath for uint256;
 
-    string public constant version = "BalancerV2 1";
+    string public constant version = "BalancerBatchV2 1";
 
     address public balancerVault;
 
@@ -21,20 +21,16 @@ contract BalancerV2 is IRouter, Ownable {
     address public weth;
 
     // Struct Pool info for Balancer
-    struct SingleSwapInfo {
-        bytes32 poolId;
-        address assetIn;
-        address assetOut;
-    }
+    mapping(bytes32 => bytes32[]) public poolBatchIds;
 
-    mapping(bytes32 => SingleSwapInfo) public singleSwapInfos;
+    mapping(bytes32 => IAsset[]) public balancerBatchAssets;
 
     // Array for path indices
     bytes32[] public pathBytes;
 
-    event AddBalancerSwap(bytes32 hash, SingleSwapInfo assets);
+    event AddBalancerBatchSwap(bytes32 hash, IAsset[] assets);
 
-    event RemoveBalancerSwap(bytes32 hash, SingleSwapInfo assets);
+    event RemoveBalancerBatchSwap(bytes32 hash, IAsset[] assets);
 
     constructor(
         address _balancerVault,
@@ -64,27 +60,28 @@ contract BalancerV2 is IRouter, Ownable {
     /**
         add balancer swaps and assets 
      */
-    function addPath(SingleSwapInfo memory _swap) public onlyOwner returns (bytes32) {
+    function addPath(bytes32[] memory _pools, IAsset[] memory _assets) public onlyOwner returns (bytes32) {
         // Generate hash index for path
-        bytes32 hash = keccak256(abi.encodePacked(_swap.poolId, _swap.assetIn, _swap.assetOut));
+        bytes32 hash = keccak256(abi.encodePacked(_assets));
 
         // Duplication check
-        require(
-            singleSwapInfos[hash].assetIn == address(0) && singleSwapInfos[hash].assetOut == address(0),
-            "ALREADY_EXIST_PATH"
-        );
+        require(poolBatchIds[hash].length == 0 && balancerBatchAssets[hash].length == 0, "ALREADY_EXIST_PATH");
 
-        singleSwapInfos[hash] = _swap;
+        // for (uint8 i = 0; i < _pools.length; i++) {
+        //     poolBatchIds[hash].push(_pools[i]);
+        // }
+        poolBatchIds[hash] = _pools;
+        balancerBatchAssets[hash] = _assets;
 
-        emit AddBalancerSwap(hash, _swap);
+        emit AddBalancerBatchSwap(hash, _assets);
 
         return hash;
     }
 
-    function getPathIndex(SingleSwapInfo memory _swap) public view returns (bytes32) {
-        bytes32 hash = keccak256(abi.encodePacked(_swap.poolId, _swap.assetIn, _swap.assetOut));
+    function getPathIndex(IAsset[] memory _assets) public view returns (bytes32) {
+        bytes32 hash = keccak256(abi.encodePacked(_assets));
 
-        if (singleSwapInfos[hash].assetIn == address(0) && singleSwapInfos[hash].assetOut == address(0)) return 0;
+        if (balancerBatchAssets[hash].length == 0) return 0;
         else return hash;
     }
 
@@ -92,16 +89,14 @@ contract BalancerV2 is IRouter, Ownable {
         Remove univ2 path from list
      */
     function removePath(bytes32 index) public onlyOwner {
-        require(
-            singleSwapInfos[index].assetIn != address(0) || singleSwapInfos[index].assetOut == address(0),
-            "NON_EXIST_PATH"
-        );
+        require(balancerBatchAssets[index].length != 0, "NON_EXIST_PATH");
 
         // TempSave for assets info
-        SingleSwapInfo storage _swap = singleSwapInfos[index];
+        IAsset[] storage assets = balancerBatchAssets[index];
 
         // Delete path record from mapping
-        delete singleSwapInfos[index];
+        delete balancerBatchAssets[index];
+        delete poolBatchIds[index];
 
         // Remove index in the list
         for (uint256 i = 0; i < pathBytes.length; i++) {
@@ -112,23 +107,21 @@ contract BalancerV2 is IRouter, Ownable {
             }
         }
 
-        emit RemoveBalancerSwap(index, _swap);
+        emit RemoveBalancerBatchSwap(index, assets);
     }
 
     /**
         Get input token from path
      */
     function pathFrom(bytes32 index) public view override returns (address) {
-        address from = address(singleSwapInfos[index].assetIn);
-        return from == address(0) ? weth : from;
+        return address(balancerBatchAssets[index][0]);
     }
 
     /**
         Get output token from path 
      */
     function pathTo(bytes32 index) public view override returns (address) {
-        address to = address(singleSwapInfos[index].assetOut);
-        return to == address(0) ? weth : to;
+        return address(balancerBatchAssets[index][balancerBatchAssets[index].length - 1]);
     }
 
     function swap(
@@ -145,17 +138,10 @@ contract BalancerV2 is IRouter, Ownable {
         require(getBalance(_from, address(this)) >= _amount, "INSUFFICIENT_TOKEN_TRANSFERED");
 
         // Get Swaps and assets info from registered
-        SingleSwapInfo memory _swap = singleSwapInfos[_index];
+        bytes32[] memory pools = poolBatchIds[_index];
+        IAsset[] memory assets = balancerBatchAssets[_index];
 
-        // Create SingleSwap structure
-        SingleSwap memory singleSwap = SingleSwap({
-            poolId: _swap.poolId,
-            assetIn: IAsset(_swap.assetIn),
-            assetOut: IAsset(_swap.assetOut),
-            kind: SwapKind.GIVEN_IN,
-            amount: _amount,
-            userData: ""
-        });
+        uint256 length = assets.length;
 
         // Create fund structure
         FundManagement memory funds = FundManagement({
@@ -165,22 +151,36 @@ contract BalancerV2 is IRouter, Ownable {
             toInternalBalance: false
         });
 
-        uint256 limit = 0;
-
-        console.log("Asset: ", _swap.assetIn, _swap.assetOut);
-        // Call batch swap in balancer
-        if (_from == weth)
-            IBalancer(balancerVault).swap{value: _amount}(singleSwap, funds, limit, block.timestamp + 3600);
-        else {
-            // Approve NoteToken to balancer Vault
-            IERC20(_from).approve(balancerVault, 0);
-            IERC20(_from).approve(balancerVault, _amount);
-            IBalancer(balancerVault).swap(singleSwap, funds, limit, block.timestamp + 3600);
+        // Create BalancerSwaps
+        BatchSwapStep[] memory swaps = new BatchSwapStep[](pools.length);
+        for (uint256 i = 0; i < pools.length; i++) {
+            swaps[i] = BatchSwapStep({
+                poolId: pools[i],
+                assetInIndex: i,
+                assetOutIndex: i + 1,
+                amount: i == 0 ? _amount : 0,
+                userData: ""
+            });
         }
+
+        // Create limit output
+        int256[] memory limits = new int256[](length);
+
+        limits[0] = int256(_amount);
+        for (uint256 i = 1; i < length; i++) {
+            limits[i] = int256(0);
+        }
+
+        // Approve NoteToken to balancer Vault
+        IERC20(_from).approve(balancerVault, 0);
+        IERC20(_from).approve(balancerVault, _amount);
+
+        // Call batch swap in balancer
+        IBalancer(balancerVault).batchSwap(0, swaps, assets, funds, limits, block.timestamp + 3600);
     }
 
     function getBalance(address asset, address account) internal view returns (uint256) {
-        if (address(asset) == address(weth) || address(asset) == address(0)) return address(account).balance;
+        if (address(asset) == address(weth)) return address(account).balance;
         else return IERC20(asset).balanceOf(account);
     }
 }
