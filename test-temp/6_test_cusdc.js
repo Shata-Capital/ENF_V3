@@ -139,8 +139,10 @@ describe("ENF Vault test", async () => {
       ethUsdcPath
     )
 
-    // Set swaps on Balancer
+    // Set swaps on Balancer Batch
     await balancerBatch.addPath(balancerNoteToUSDCPools, balancerNoteToUSDCAssets)
+
+    // Set swaps on Balancer
     await balancer.addPath(balancerNoteToETHSwap)
     await balancer.addPath(balancerETHToUSDCSwap)
 
