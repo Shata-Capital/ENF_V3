@@ -1,6 +1,7 @@
 /**
  * Token Addresses
  */
+exports.zeroAddress = "0x0000000000000000000000000000000000000000"
 exports.usdc = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
 exports.weth = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
 exports.crv = "0xD533a949740bb3306d119CC777fa900bA034cd52"

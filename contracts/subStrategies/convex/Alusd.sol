@@ -274,6 +274,8 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
         // Get Current Deposit Amt
         uint256 total = _totalAssets();
 
+        if (total == 0) return 0;
+        
         // If requested amt is bigger than total asset, try withdraw total
         if (_amount > total) _amount = total;
 

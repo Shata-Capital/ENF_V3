@@ -90,7 +90,9 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
         require(assets <= maxWithdraw, "EXCEED_ONE_TIME_MAX_WITHDRAW");
 
         // Total Assets amount until now
-        uint256 totalDeposit = IController(controller).totalAssets();
+        uint256 totalDeposit = convertToAssets(balanceOf(msg.sender));
+        console.log("Total Deposit: ", totalDeposit);
+        
         require(assets < totalDeposit, "EXCEED_TOTAL_DEPOSIT");
 
         // Calls Withdraw function on controller

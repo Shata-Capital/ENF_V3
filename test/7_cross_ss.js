@@ -5,8 +5,7 @@ const { utils } = require("ethers");
 
 const { usdcContract, uniV2RouterContract, uniV2FactoryContract, alusdContract, } = require("./externalContracts")
 
-const { usdc, weth, convexBooster, alusdPid, alusdLP, curveAlusd, lusdPid, lusdLP, curveLusd, aavePid, curveAave, aaveLP, balancerETHToUSDCSwap, balancerNoteToETHSwap, balancerNoteToUSDCAssets, balancerNoteToUSDCPools, compoundPid, curveCompound, compoundLP, triPid, curveTri, triLP, crv, uniSwapV2Router, uniSwapV3Router, balancerV2Vault, crvUsdcPath, crvEthPath, ethUsdcPath, notionalProxy, note, nusdc, currencyId, } = require("../constants/constants");
-const { zeroAddress } = require("ethereumjs-util");
+const { usdc, weth, convexBooster, alusdPid, alusdLP, curveAlusd, lusdPid, lusdLP, curveLusd, aavePid, curveAave, aaveLP, balancerETHToUSDCSwap, balancerNoteToETHSwap, balancerNoteToUSDCAssets, balancerNoteToUSDCPools, compoundPid, curveCompound, compoundLP, triPid, curveTri, triLP, crv, uniSwapV2Router, uniSwapV3Router, balancerV2Vault, crvUsdcPath, crvEthPath, ethUsdcPath, notionalProxy, note, nusdc, currencyId, zeroAddress} = require("../constants/constants");
 
 let vault, controller, alusd, lusd, aave, compound, tri, cusdc, depositApprover, exchange, uniV2, uniV3, balancer, balancerBatch
 
@@ -533,15 +532,19 @@ describe("ENF Vault test", async () => {
         // Approve to deposit approver
         await usdcContract(deployer).approve(alusd.address, fromUSDC(500))
         await usdcContract(deployer).approve(lusd.address, fromUSDC(500))
+        await usdcContract(deployer).approve(cusdc.address, fromUSDC(500))
 
         await alusd.connect(deployer).ownerDeposit(fromUSDC(500))
         await lusd.connect(deployer).ownerDeposit(fromUSDC(500))
+        await cusdc.connect(deployer).ownerDeposit(fromUSDC(500))
 
         // Read Total Assets
         let total = await alusd.totalAssets()
         console.log(`\n\tTotal ALUSD USDC Balance: ${toUSDC(total)}`)
         total = await lusd.totalAssets()
         console.log(`\n\tTotal LUSD USDC Balance: ${toUSDC(total)}`)
+        total = await cusdc.totalAssets()
+        console.log(`\n\tTotal CUSD USDC Balance: ${toUSDC(total)}`)
     })
 
     /////////////////////////////////////////////
@@ -575,8 +578,8 @@ describe("ENF Vault test", async () => {
         console.log(`\n\tTotal CUSDC USDC Balance: ${toUSDC(total)}`)
     })
 
-    it("Owner move All funds from ALUSD to CUSDC will be reverted", async () => {
-        await expect(controller.moveFund(0, 2, total)).to.revertedWith("NOT_WITHDRAWABLE_AMOUNT_FROM")
+    it("Owner move funds from ALUSD to CUSDC will be reverted", async () => {
+        await expect(controller.moveFund(0, 2, fromUSDC(100))).to.revertedWith("NOT_WITHDRAWABLE_AMOUNT_FROM")
     })
 
     //////////////////////////////////////
@@ -598,6 +601,11 @@ describe("ENF Vault test", async () => {
 
         // Deposit
         await expect(depositApprover.connect(alice).deposit(fromUSDC(1000))).to.revertedWith("PAUSED")
+    })
+
+    it("Pause vault", async () => {
+        await vault.resume()
+        expect(await vault.paused()).to.equal(false)
     })
 
     /////////////////////////////////////
@@ -627,14 +635,14 @@ describe("ENF Vault test", async () => {
     })
 
     it("Vault set MaxWithdraw", async () => {
-        await vault.setMaxWithdraw(fromUSDC(100))
+        await vault.setMaxWithdraw(fromUSDC(1000))
 
-        expect(await vault.maxWithdraw()).to.equal(fromUSDC(100))
+        expect(await vault.maxWithdraw()).to.equal(fromUSDC(1000))
     })
 
     it("Withdraw 101 Will be reverted since max check", async () => {
         // withdraw
-        await expect(vault.connect(alice).withdraw(fromUSDC(101), alice.address)).to.revertedWith("EXCEED_ONE_TIME_MAX_WITHDRAW")
+        await expect(vault.connect(alice).withdraw(fromUSDC(1001), alice.address)).to.revertedWith("EXCEED_ONE_TIME_MAX_WITHDRAW")
     })
 
     ///////////////////////////////////////
@@ -652,7 +660,7 @@ describe("ENF Vault test", async () => {
     it("Withdraw 100 will be withdrawn from LUSD", async () => {
         await vault.connect(alice).withdraw(fromUSDC(100), alice.address);
         // Read Total Assets
-        const total = await vault.totalAssets()
+        let total = await vault.totalAssets()
         console.log(`\tTotal USDC Balance: ${toUSDC(total)}`)
 
         // Read ENF token Mint
@@ -675,7 +683,7 @@ describe("ENF Vault test", async () => {
     it("Withdraw 100 will be withdrawn from LUSD, since ALUSD has no deposit", async () => {
         await vault.connect(alice).withdraw(fromUSDC(100), alice.address);
         // Read Total Assets
-        const total = await vault.totalAssets()
+        let total = await vault.totalAssets()
         console.log(`\tTotal USDC Balance: ${toUSDC(total)}`)
 
         // Read ENF token Mint
@@ -689,5 +697,28 @@ describe("ENF Vault test", async () => {
         console.log(`\n\tTotal LUSD USDC Balance: ${toUSDC(total)}`)
         total = await cusdc.totalAssets()
         console.log(`\n\tTotal CUSDC USDC Balance: ${toUSDC(total)}`)
+    })
+
+    it("Withdraw 1000 will be withdrawn from LUSD and CUSDC, since ALUSD has no deposit", async () => {
+        await vault.connect(alice).withdraw(fromUSDC(1000), alice.address);
+        // Read Total Assets
+        let total = await vault.totalAssets()
+        console.log(`\tTotal USDC Balance: ${toUSDC(total)}`)
+
+        // Read ENF token Mint
+        const enf = await vault.balanceOf(alice.address)
+        console.log(`\tAlice ENF Balance: ${toEth(enf)}`)
+
+        // Read Total Assets
+        total = await alusd.totalAssets()
+        console.log(`\n\tTotal ALUSD USDC Balance: ${toUSDC(total)}`)
+        total = await lusd.totalAssets()
+        console.log(`\n\tTotal LUSD USDC Balance: ${toUSDC(total)}`)
+        total = await cusdc.totalAssets()
+        console.log(`\n\tTotal CUSDC USDC Balance: ${toUSDC(total)}`)
+    })
+
+    it("Withdraw 999 will be reverted since exceed total deposit", async () => {
+        await expect(vault.connect(alice).withdraw(fromUSDC(999), alice.address)).to.revertedWith("EXCEED_TOTAL_DEPOSIT")
     })
 })
