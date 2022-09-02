@@ -5,7 +5,8 @@ const { utils } = require("ethers");
 
 const { usdcContract, uniV2RouterContract, uniV2FactoryContract, alusdContract, } = require("./externalContracts")
 
-const { usdc, weth, convexBooster, alusdPid, alusdLP, curveAlusd, lusdPid, lusdLP, curveLusd, aavePid, curveAave, aaveLP, balancerETHToUSDCSwap, balancerNoteToETHSwap, balancerNoteToUSDCAssets, balancerNoteToUSDCPools, compoundPid, curveCompound, compoundLP, triPid, curveTri, triLP, crv, uniSwapV2Router, uniSwapV3Router, balancerV2Vault, crvUsdcPath, crvEthPath, ethUsdcPath, notionalProxy, note, nusdc, currencyId, } = require("../constants/constants")
+const { usdc, weth, convexBooster, alusdPid, alusdLP, curveAlusd, lusdPid, lusdLP, curveLusd, aavePid, curveAave, aaveLP, balancerETHToUSDCSwap, balancerNoteToETHSwap, balancerNoteToUSDCAssets, balancerNoteToUSDCPools, compoundPid, curveCompound, compoundLP, triPid, curveTri, triLP, crv, uniSwapV2Router, uniSwapV3Router, balancerV2Vault, crvUsdcPath, crvEthPath, ethUsdcPath, notionalProxy, note, nusdc, currencyId, } = require("../constants/constants");
+const { zeroAddress } = require("ethereumjs-util");
 
 let vault, controller, alusd, lusd, aave, compound, tri, cusdc, depositApprover, exchange, uniV2, uniV3, balancer, balancerBatch
 
@@ -378,6 +379,30 @@ describe("ENF Vault test", async () => {
         await expect(vault.connect(alice).withdraw(fromUSDC(10), alice.address)).to.revertedWith("EXCEED_TOTAL_DEPOSIT")
     })
 
+    //////////////////////////////////////////////////
+    //               DEPOSIT REVERT CHECK           //
+    //////////////////////////////////////////////////
+    it("Deposit will be reverted since ZERO asset", async () => {
+        // Deposit
+        await expect(depositApprover.connect(alice).deposit(fromUSDC(0))).to.revertedWith("ZERO_ASSETS")
+    })
+
+    it("Deposit will be reverted since Insufficient allowance", async () => {
+        // Approve to deposit approver
+        await usdcContract(alice).approve(depositApprover.address, fromUSDC(100))
+
+        // Deposit
+        await expect(depositApprover.connect(alice).deposit(fromUSDC(1000))).to.revertedWith("INSUFFICIENT_ALLOWANCE")
+    })
+
+    it("Deposit will be reverted since Insufficient balance", async () => {
+        // Approve to deposit approver
+        await usdcContract(alice).approve(depositApprover.address, fromUSDC(100000))
+
+        // Deposit
+        await expect(depositApprover.connect(alice).deposit(fromUSDC(100000))).to.revertedWith("INSUFFICIENT_AMOUNT")
+    })
+
     it("Deposit 1000 USDC", async () => {
         // Approve to deposit approver
         await usdcContract(alice).approve(depositApprover.address, fromUSDC(1000))
@@ -405,52 +430,81 @@ describe("ENF Vault test", async () => {
     //     await network.provider.send("evm_mine");
     // })
 
-    it("Harvest ALUSD", async () => {
-        // Get CRV-USDC path index
-        const index = await uniV2.getPathIndex(uniSwapV2Router, crvUsdcPath)
-        console.log(`\tCRV-USDC Path index: ${index}\n`)
+    // it("Harvest ALUSD", async () => {
+    //     // Get CRV-USDC path index
+    //     const index = await uniV2.getPathIndex(uniSwapV2Router, crvUsdcPath)
+    //     console.log(`\tCRV-USDC Path index: ${index}\n`)
 
-        await controller.harvest([0], [index], [uniV2.address])
+    //     await controller.harvest([0], [index], [uniV2.address])
 
-        // Read Total Assets
-        const total = await vault.totalAssets()
-        console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
-    })
+    //     // Read Total Assets
+    //     const total = await vault.totalAssets()
+    //     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
+    // })
 
-    it("Pass Time and block number", async () => {
-        await network.provider.send("evm_increaseTime", [3600 * 1 * 60]);
-        await network.provider.send("evm_mine");
-    })
+    // it("Pass Time and block number", async () => {
+    //     await network.provider.send("evm_increaseTime", [3600 * 1 * 60]);
+    //     await network.provider.send("evm_mine");
+    // })
 
-    it("Harvest ALUSD and LUSD", async () => {
-        // Get CRV-USDC path index
-        const index = await uniV2.getPathIndex(uniSwapV2Router, crvUsdcPath)
-        console.log(`\tCRV-USDC Path index: ${index}\n`)
+    // it("Harvest ALUSD", async () => {
+    //     // Get CRV-USDC path index
+    //     const index = await uniV2.getPathIndex(uniSwapV2Router, crvUsdcPath)
+    //     console.log(`\tCRV-USDC Path index: ${index}\n`)
 
-        await controller.harvest([0, 1], [index], [uniV2.address])
+    //     await controller.harvest([0], [index], [uniV2.address])
 
-        // Read Total Assets
-        const total = await vault.totalAssets()
-        console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
-    })
+    //     // Read Total Assets
+    //     const total = await vault.totalAssets()
+    //     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
+    // })
 
-    it("Pass Time and block number", async () => {
-        await network.provider.send("evm_increaseTime", [3600 * 1 * 60]);
-        await network.provider.send("evm_mine");
-    })
+    // it("Harvest LUSD", async () => {
+    //     // Get CRV-USDC path index
+    //     const index = await uniV2.getPathIndex(uniSwapV2Router, crvUsdcPath)
+    //     console.log(`\tCRV-USDC Path index: ${index}\n`)
 
-    it("Harvest ALUSD, and LUSD", async () => {
-        // Get CRV-USDC path index
-        const index0 = await uniV2.getPathIndex(uniSwapV2Router, crvEthPath)
-        const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath)
-        console.log(`\tCRV-ETH Path index: ${index0}\n`)
+    //     await controller.harvest([1], [index], [uniV2.address])
 
-        await controller.harvest([0, 1], [index0, index1], [uniV2.address, uniV2.address])
+    //     // Read Total Assets
+    //     const total = await vault.totalAssets()
+    //     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
+    // })
 
-        // Read Total Assets
-        const total = await vault.totalAssets()
-        console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
-    })
+    // it("Pass Time and block number", async () => {
+    //     await network.provider.send("evm_increaseTime", [3600 * 1 * 60]);
+    //     await network.provider.send("evm_mine");
+    // })
+
+    // it("Harvest ALUSD, and LUSD", async () => {
+    //     // Get CRV-USDC path index
+    //     const index0 = await uniV2.getPathIndex(uniSwapV2Router, crvEthPath)
+    //     const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath)
+    //     console.log(`\tCRV-ETH Path index: ${index0}\n`)
+
+    //     await controller.harvest([0, 1], [index0, index1], [uniV2.address, uniV2.address])
+
+    //     // Read Total Assets
+    //     const total = await vault.totalAssets()
+    //     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
+    // })
+
+    // it("Pass Time and block number", async () => {
+    //     await network.provider.send("evm_increaseTime", [3600 * 24 * 1]);
+    //     await network.provider.send("evm_mine");
+    // })
+
+    // it("Harvest CUSDC", async () => {
+    //     // Get NOTE-USDC path index
+    //     const index = await balancerBatch.getPathIndex(balancerNoteToUSDCAssets)
+    //     console.log(`\tNOTE-USDC Path index: ${index}\n`)
+
+    //     await controller.harvest([2], [index], [balancerBatch.address])
+
+    //     // Read Total Assets
+    //     const total = await vault.totalAssets()
+    //     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
+    // })
 
     ////////////////////////////////////////////////
     //              EMERGENCY WITHDRAW            //
@@ -488,5 +542,152 @@ describe("ENF Vault test", async () => {
         console.log(`\n\tTotal ALUSD USDC Balance: ${toUSDC(total)}`)
         total = await lusd.totalAssets()
         console.log(`\n\tTotal LUSD USDC Balance: ${toUSDC(total)}`)
+    })
+
+    /////////////////////////////////////////////
+    //               MOVE FUNDS                //
+    /////////////////////////////////////////////
+    it("Owner move funds from ALUSD to LUSD", async () => {
+        await controller.moveFund(0, 1, fromUSDC(100))
+
+        // Read Total Assets
+        let total = await alusd.totalAssets()
+        console.log(`\n\tTotal ALUSD USDC Balance: ${toUSDC(total)}`)
+        total = await lusd.totalAssets()
+        console.log(`\n\tTotal LUSD USDC Balance: ${toUSDC(total)}`)
+    })
+
+    it("Owner move All funds from ALUSD to CUSDC", async () => {
+        // Read Total Assets
+        let total = await cusdc.totalAssets()
+        console.log(`\n\tTotal CUSDC USDC Balance: ${toUSDC(total)}`)
+        total = await alusd.totalAssets()
+        console.log(`\n\tTotal ALUSD USDC Balance: ${toUSDC(total)}`)
+
+        await controller.moveFund(0, 2, total)
+
+        // Read Total Assets
+        total = await alusd.totalAssets()
+        console.log(`\n\tTotal ALUSD USDC Balance: ${toUSDC(total)}`)
+        total = await lusd.totalAssets()
+        console.log(`\n\tTotal LUSD USDC Balance: ${toUSDC(total)}`)
+        total = await cusdc.totalAssets()
+        console.log(`\n\tTotal CUSDC USDC Balance: ${toUSDC(total)}`)
+    })
+
+    it("Owner move All funds from ALUSD to CUSDC will be reverted", async () => {
+        await expect(controller.moveFund(0, 2, total)).to.revertedWith("NOT_WITHDRAWABLE_AMOUNT_FROM")
+    })
+
+    //////////////////////////////////////
+    //      SYSTEM PAUSE/RESUME         //
+    //////////////////////////////////////
+
+    it("Pause Vault will be reverted since ownership", async () => {
+        await expect(vault.connect(alice).pause()).to.revertedWith("Ownable: caller is not the owner")
+    })
+
+    it("Pause vault", async () => {
+        await vault.pause()
+        expect(await vault.paused()).to.equal(true)
+    })
+
+    it("Deposit will be reverted since pause", async () => {
+        // Approve to deposit approver
+        await usdcContract(alice).approve(depositApprover.address, fromUSDC(1000))
+
+        // Deposit
+        await expect(depositApprover.connect(alice).deposit(fromUSDC(1000))).to.revertedWith("PAUSED")
+    })
+
+    /////////////////////////////////////
+    //       AUXILIARY FUNCITON        //
+    /////////////////////////////////////
+
+    it("Set vault on deposit Approver will be reverted with ownership", async () => {
+        await expect(depositApprover.connect(alice).setVault(vault.address)).to.revertedWith("Ownable: caller is not the owner")
+    })
+
+    it("Set vault on deposit Approver will be reverted with zero address", async () => {
+        await expect(depositApprover.setVault(zeroAddress)).to.revertedWith("ZERO_ADDRESS")
+    })
+
+    it("Vault set MaxDeposit", async () => {
+        await vault.setMaxDeposit(fromUSDC(100))
+
+        expect(await vault.maxDeposit()).to.equal(fromUSDC(100))
+    })
+
+    it("Deposit 101 Will be reverted since max check", async () => {
+        // Approve to deposit approver
+        await usdcContract(alice).approve(depositApprover.address, fromUSDC(101))
+
+        // Deposit
+        await expect(depositApprover.connect(alice).deposit(fromUSDC(101))).to.revertedWith("EXCEED_ONE_TIME_MAX_DEPOSIT")
+    })
+
+    it("Vault set MaxWithdraw", async () => {
+        await vault.setMaxWithdraw(fromUSDC(100))
+
+        expect(await vault.maxWithdraw()).to.equal(fromUSDC(100))
+    })
+
+    it("Withdraw 101 Will be reverted since max check", async () => {
+        // withdraw
+        await expect(vault.connect(alice).withdraw(fromUSDC(101), alice.address)).to.revertedWith("EXCEED_ONE_TIME_MAX_WITHDRAW")
+    })
+
+    ///////////////////////////////////////
+    //    CONTROLLER WITHDRAW CHECK      //
+    ///////////////////////////////////////
+
+    it("COntroller set APY Sort will be reverted since length mismatching", async () => {
+        await expect(controller.setAPYSort([1, 0])).to.revertedWith("INVALID_APY_SORT")
+    })
+
+    it("COntroller set APY Sort ", async () => {
+        await controller.setAPYSort([1, 0, 2])
+    })
+
+    it("Withdraw 100 will be withdrawn from LUSD", async () => {
+        await vault.connect(alice).withdraw(fromUSDC(100), alice.address);
+        // Read Total Assets
+        const total = await vault.totalAssets()
+        console.log(`\tTotal USDC Balance: ${toUSDC(total)}`)
+
+        // Read ENF token Mint
+        const enf = await vault.balanceOf(alice.address)
+        console.log(`\tAlice ENF Balance: ${toEth(enf)}`)
+
+        // Read Total Assets
+        total = await alusd.totalAssets()
+        console.log(`\n\tTotal ALUSD USDC Balance: ${toUSDC(total)}`)
+        total = await lusd.totalAssets()
+        console.log(`\n\tTotal LUSD USDC Balance: ${toUSDC(total)}`)
+        total = await cusdc.totalAssets()
+        console.log(`\n\tTotal CUSDC USDC Balance: ${toUSDC(total)}`)
+    })
+
+    it("COntroller set APY Sort ", async () => {
+        await controller.setAPYSort([0, 1, 2])
+    })
+
+    it("Withdraw 100 will be withdrawn from LUSD, since ALUSD has no deposit", async () => {
+        await vault.connect(alice).withdraw(fromUSDC(100), alice.address);
+        // Read Total Assets
+        const total = await vault.totalAssets()
+        console.log(`\tTotal USDC Balance: ${toUSDC(total)}`)
+
+        // Read ENF token Mint
+        const enf = await vault.balanceOf(alice.address)
+        console.log(`\tAlice ENF Balance: ${toEth(enf)}`)
+
+        // Read Total Assets
+        total = await alusd.totalAssets()
+        console.log(`\n\tTotal ALUSD USDC Balance: ${toUSDC(total)}`)
+        total = await lusd.totalAssets()
+        console.log(`\n\tTotal LUSD USDC Balance: ${toUSDC(total)}`)
+        total = await cusdc.totalAssets()
+        console.log(`\n\tTotal CUSDC USDC Balance: ${toUSDC(total)}`)
     })
 })

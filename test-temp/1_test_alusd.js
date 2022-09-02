@@ -5,7 +5,7 @@ const { utils } = require("ethers");
 
 const { usdcContract, uniV2RouterContract, uniV2FactoryContract, alusdContract, } = require("./externalContracts")
 
-const { usdc, weth, convexBooster, alusdPid, alusdLP, curveAlusd, crv, uniSwapV2Router, uniSwapV3Router, balancerV2Vault, balancerAssets, balancerSwpas, crvUsdcPath, crvEthPath, ethUsdcPath } = require("../constants/constants")
+const { usdc, weth, convexBooster, alusdPid, alusdLP, curveAlusd, crv, uniSwapV2Router, uniSwapV3Router, balancerV2Vault, balancerETHToUSDCSwap, balancerNoteToETHSwap, balancerNoteToUSDCAssets, balancerNoteToUSDCPools, crvUsdcPath, crvEthPath, ethUsdcPath } = require("../constants/constants")
 
 let vault, controller, alusd, depositApprover, exchange, uniV2
 
@@ -139,9 +139,14 @@ describe("ENF Vault test", async () => {
             ethUsdcPath
         )
 
-        // Set swaps on Balancer
-        await balancer.addPath(balancerSwpas, balancerAssets)
+        console.log("\nDeploying Balancer BatchSwap".green)
+        const BalancerBatch = await ethers.getContractFactory("BalancerBatchV2")
+        balancerBatch = await BalancerBatch.deploy(balancerV2Vault, exchange.address, weth)
+        console.log("Balancer Batch V2 is Deployed: ", balancerBatch.address)
 
+
+        // Set swaps on Balancer Batch
+        await balancerBatch.addPath(balancerNoteToUSDCPools, balancerNoteToUSDCAssets)
         // Get CRV-USDC path index
         const index = await uniV2.getPathIndex(uniSwapV2Router, crvUsdcPath)
         console.log(`\tCRV-USDC Path index: ${index}\n`)

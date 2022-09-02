@@ -38,7 +38,6 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
 
     // Default SS
     uint8 public defaultDepositSS;
-    uint8 public defaultWithdrawSS;
 
     struct SSInfo {
         address subStrategy;
@@ -324,8 +323,6 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
      */
     function setAPYSort(uint256[] memory _apySort) public onlyOwner {
         require(_apySort.length == subStrategies.length, "INVALID_APY_SORT");
-        require(_apySort[0] == defaultWithdrawSS, "FIRST_SS_MUST_BE_DEFAULT");
-
         apySort = _apySort;
     }
 
@@ -407,13 +404,5 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
      */
     function setDefaultOption(bool _isDefault) public onlyOwner {
         isDefault = _isDefault;
-    }
-
-    /**
-        Set Default Withdraw substrategy
-     */
-    function setDefaultWithdrawSS(uint8 _ssId) public onlyOwner {
-        require(_ssId < subStrategies.length, "INVALID_SS_ID");
-        defaultWithdrawSS = _ssId;
     }
 }
