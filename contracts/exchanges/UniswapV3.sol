@@ -12,7 +12,7 @@ import "../interfaces/IRouter.sol";
 contract UniswapV3 is IRouter, Ownable {
     using SafeMath for uint256;
 
-    string public constant version = "UniswapV2 1";
+    string public constant version = "UniswapV3 1";
 
     address public weth;
 

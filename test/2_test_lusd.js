@@ -5,9 +5,9 @@ const { utils } = require("ethers");
 
 const { usdcContract, uniV2RouterContract, uniV2FactoryContract, lusdContract, } = require("./externalContracts")
 
-const { usdc, weth, convexBooster, lusdPid, lusdLP, curveLusd, aaveLP, compoundLP, triLP, crv, stkAAVE, lqty, alcx, uniSwapV2Router, crvUsdcPath } = require("../constants/constants")
+const { usdc, weth, convexBooster, lusdPid, lusdLP, curveLusd, aaveLP, compoundLP, triLP, crv, stkAAVE, lqty, alcx, uniSwapV2Router, crvUsdcPath, uniSwapV3Router, univ3CRVUSDC } = require("../constants/constants")
 
-let vault, controller, lusd, depositApprover, exchange
+let vault, controller, lusd, depositApprover, exchange, univ3
 
 function toEth(num) {
     return utils.formatEther(num)
@@ -51,25 +51,31 @@ describe("ENF Vault test", async () => {
         // Deploy Vault
         console.log("Deploying Vault".green)
         const Vault = await ethers.getContractFactory("EFVault")
-        vault = await Vault.deploy(usdc, "ENF LP", "ENF")
+        vault = await upgrades.deployProxy(Vault, [usdc, "ENF LP", "ENF"])
         console.log(`Vault deployed at: ${vault.address}\n`)
 
         // Deploy Controller
         console.log("Deploying Controller".green)
         const Controller = await ethers.getContractFactory("Controller")
-        controller = await Controller.deploy(vault.address, usdc, treasury.address)
+        controller = await upgrades.deployProxy(Controller, [vault.address, usdc, treasury.address, weth])
         console.log(`Controller deployed at: ${controller.address}\n`)
 
-        // Deploy Lusd
+        // Deploy Alusd
         console.log("Deploying LUSD".green)
-        const Lusd = await ethers.getContractFactory("Lusd")
-        lusd = await Lusd.deploy(curveLusd, lusdLP, controller.address, usdc, convexBooster, lusdPid)
+        const LUSD = await ethers.getContractFactory("Lusd")
+        lusd = await upgrades.deployProxy(LUSD, [curveLusd, lusdLP, controller.address, usdc, convexBooster, lusdPid])
         console.log(`Lusd deployed at: ${lusd.address}\n`)
 
         // Deploy Exchange
         console.log("Deploying Exchange".green)
         const Exchange = await ethers.getContractFactory("Exchange")
         exchange = await Exchange.deploy(weth, controller.address)
+
+        // Deploy routers
+        console.log("\nDeploying Uni V3 Router".green)
+        const UniV3 = await ethers.getContractFactory("UniswapV3")
+        uniV3 = await UniV3.deploy(uniSwapV3Router, exchange.address)
+        console.log("Uni V3 is deployed: ", uniV3.address)
 
         /**
          * Wiring Contracts with each other 
@@ -106,15 +112,11 @@ describe("ENF Vault test", async () => {
         await lusd.addRewardToken(crv)
 
         // Set CRV-USDC to exchange
-        await exchange.addPath(
-            2,
-            uniSwapV2Router,
-            [crv, weth, usdc]
-        )
+        await uniV3.addPath(univ3CRVUSDC)
 
         // Get CRV-USDC path index
-        const index = await exchange.getPathIndex(uniSwapV2Router, [crv, weth, usdc])
-        console.log(`\tCRV-USDC Path index: ${index}\n`)
+        const index = await uniV3.getPathIndex(univ3CRVUSDC)
+        console.log(`\tCRV-USDC Uni v3 Path index: ${index}\n`)
     })
 
     it("Vault Deployed", async () => {
@@ -193,7 +195,7 @@ describe("ENF Vault test", async () => {
     })
 
     it("Withdraw 10 USDC will be reverted", async () => {
-        await expect(vault.connect(alice).withdraw(fromUSDC(10), alice.address)).to.revertedWith("INVALID_WITHDRAWN_SHARES")
+        await expect(vault.connect(alice).withdraw(fromUSDC(10), alice.address)).to.revertedWith("EXCEED_TOTAL_DEPOSIT")
     })
 
     it("Deposit 1000 USDC", async () => {
@@ -230,10 +232,10 @@ describe("ENF Vault test", async () => {
 
     it("Harvest LUSD", async () => {
         // Get CRV-USDC path index
-        const index = await exchange.getPathIndex(uniSwapV2Router, [crv, weth, usdc])
+        const index = await uniV3.getPathIndex(univ3CRVUSDC)
         console.log(`\tCRV-USDC Path index: ${index}\n`)
 
-        await controller.harvest([0], [index])
+        await controller.harvest([0], [index], [uniV3.address])
 
         // Read Total Assets
         const total = await vault.totalAssets()

@@ -222,6 +222,7 @@ contract CompoundV3 is OwnableUpgradeable, ISubStrategy {
         // Transfer Reward tokens to controller
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             uint256 balance = IERC20(rewardTokens[i]).balanceOf(address(this));
+            require(balance > 0, "ZERO_HARVEST_ON_CONVEX_COMPOUND");
             TransferHelper.safeTransfer(rewardTokens[i], controller, balance);
         }
 
@@ -274,7 +275,7 @@ contract CompoundV3 is OwnableUpgradeable, ISubStrategy {
         uint256 total = _totalAssets();
 
         if (total == 0) return 0;
-        
+
         // If requested amt is bigger than total asset, try withdraw total
         if (_amount > total) _amount = total;
 
