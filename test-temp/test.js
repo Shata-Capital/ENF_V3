@@ -10,7 +10,7 @@ const { crvContract, uniV2RouterContract, uniV2FactoryContract, alusdContract, c
 
 const { usdc, weth, convexBooster, alusdPid, alusdLP, curveAlusd, crv, uniSwapV2Router, uniSwapV3Router, curveCRVETH, balancerV2Vault, balancerETHToUSDCSwap, balancerNoteToETHSwap, balancerNoteToUSDCAssets, balancerNoteToUSDCPools, crvUsdcPath, crvEthPath, ethUsdcPath } = require("../constants/constants")
 
-let curveTest
+let uniV3Test
 
 function toEth(num) {
     return utils.formatEther(num)
@@ -37,10 +37,10 @@ describe("ENF Vault test", async () => {
     before(async () => {
         [deployer, alice, bob, carol, david, evan, fiona, treasury] = await ethers.getSigners();
 
-        // Deploy CurveTest
-        const CurveTest = await ethers.getContractFactory("CurveTest")
-        curveTest = await CurveTest.deploy()
-        console.log("Curve Tst deployed: ", curveTest.address)
+        // Deploy uniV3Test
+        const UniV3Test = await ethers.getContractFactory("UniV3Test")
+        uniV3Test = await UniV3Test.deploy()
+        console.log("Uni Tst deployed: ", uniV3Test.address)
     })
 
     // Prepare USDC before
@@ -62,24 +62,28 @@ describe("ENF Vault test", async () => {
     it("Swap via curve test", async () => {
         let bal = await provider.getBalance(alice.address)
         console.log("Alice ETh: ", toEth(bal))
+        curCRV = await crvContract(deployer).balanceOf(alice.address)
+        console.log(`\tCRV of Alice: ${toEth(curCRV)}`)
 
-        await crvContract(alice).approve(curveTest.address, fromEth(1400))
-        await curveTest.connect(alice).swap(fromEth(1400))
+        await crvContract(alice).approve(uniV3Test.address, fromEth(1400))
+        await uniV3Test.connect(alice).swap(fromEth(1400))
 
         bal = await provider.getBalance(alice.address)
         console.log("Alice ETh: ", toEth(bal))
-    })
-
-    it("Swap Directly via curve", async () => {
-        let curCRV = await crvContract(deployer).balanceOf(alice.address)
-        console.log(`\tCRV of Alice: ${toEth(curCRV)}`)
-
-        await crvContract(alice).approve(crvETHContract(alice).address, fromEth(0))
-        await crvContract(alice).approve(crvETHContract(alice).address, fromEth(100000000000000000))
-
-        await crvETHContract(deployer).exchange(1, 0, fromEth(100), 0)
-
         curCRV = await crvContract(deployer).balanceOf(alice.address)
         console.log(`\tCRV of Alice: ${toEth(curCRV)}`)
     })
+
+    // it("Swap Directly via curve", async () => {
+    //     let curCRV = await crvContract(deployer).balanceOf(alice.address)
+    //     console.log(`\tCRV of Alice: ${toEth(curCRV)}`)
+
+    //     await crvContract(alice).approve(crvETHContract(alice).address, fromEth(0))
+    //     await crvContract(alice).approve(crvETHContract(alice).address, fromEth(100000000000000000))
+
+    //     await crvETHContract(deployer).exchange(1, 0, fromEth(100), 0)
+
+    //     curCRV = await crvContract(deployer).balanceOf(alice.address)
+    //     console.log(`\tCRV of Alice: ${toEth(curCRV)}`)
+    // })
 })

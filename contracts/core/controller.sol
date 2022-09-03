@@ -392,11 +392,6 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     }
 
     /**
-        Remove Substrategey from controller
-     */
-    function removeSubStrategy(uint256 index) public onlyOwner {}
-
-    /**
         Set Default Deposit substrategy
      */
     function setDefaultDepositSS(uint8 _ssId) public onlyOwner {
