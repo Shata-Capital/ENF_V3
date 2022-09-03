@@ -145,3 +145,5 @@ exports.curveCRVETH = [
     1, // i
     0 // j
 ]
+
+exports.crvETHCurvePool = "0x8301ae4fc9c624d1d396cbdaa1ed877821d7c511"

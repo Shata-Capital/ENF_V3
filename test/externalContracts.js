@@ -1,6 +1,8 @@
-const { usdc, uniSwapV2Router, uniSwapV2Factory, alusdLP, notionBatch } = require("../constants/constants")
+const { usdc, crv, crvETHCurvePool, uniSwapV2Router, uniSwapV2Factory, alusdLP, notionBatch } = require("../constants/constants")
 
 const usdcAbi = require("../abi/usdc.json")
+const crvAbi = require("../abi/crv.json")
+const crvETHAbi = require("../abi/crvETHPool.json")
 const alusdAbi = require("../abi/alusd.json")
 const notionAbi = require("../abi/notionBatch.json")
 const uniswapV2RouterAbi = require("../abi/uniswapV2Router.json")
@@ -8,6 +10,14 @@ const uniswapV2FactoryAbi = require("../abi/uniswapV2Factory.json")
 
 exports.usdcContract = (deployer) => {
     return new ethers.Contract(usdc, usdcAbi, deployer)
+}
+
+exports.crvContract = (deployer) => {
+    return new ethers.Contract(crv, crvAbi, deployer)
+}
+
+exports.crvETHContract = (deployer) => {
+    return new ethers.Contract(crvETHCurvePool, crvETHAbi, deployer)
 }
 
 exports.alusdContract = (deployer) => {

@@ -60,7 +60,7 @@ contract Exchange is IExchange, Ownable {
         console.log("Weth: ", IERC20(weth).balanceOf(address(this)));
 
         // Transfer to Controller
-        if (_to == weth) TransferHelper.safeTransfer(address(0), controller, outAmt);
+        if (_to == weth) TransferHelper.safeTransferETH(controller, outAmt);
         else TransferHelper.safeTransfer(_to, controller, outAmt);
 
         return outAmt;

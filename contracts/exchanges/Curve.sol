@@ -19,9 +19,9 @@ contract Curve is IRouter, Ownable {
     struct CurvePool {
         address pool;
         address from;
-        int128 i;
+        uint256 i;
         address to;
-        int128 j;
+        uint256 j;
     }
 
     // Array for path indices
@@ -34,8 +34,8 @@ contract Curve is IRouter, Ownable {
 
     address public exchange;
 
-    event AddCurvePool(address pool, address from, address to, int128 i, int128 j);
-    event RemoveCurvePool(address pool, address from, address to, int128 i, int128 j);
+    event AddCurvePool(address pool, address from, address to, uint256 i, uint256 j);
+    event RemoveCurvePool(address pool, address from, address to, uint256 i, uint256 j);
 
     constructor(address _weth, address _exchange) {
         weth = _weth;
@@ -64,8 +64,8 @@ contract Curve is IRouter, Ownable {
         address _pool,
         address _from,
         address _to,
-        int128 _i,
-        int128 _j
+        uint256 _i,
+        uint256 _j
     ) public onlyOwner returns (bytes32) {
         // Generate hash index for path
         bytes32 hash = keccak256(abi.encodePacked(_pool, _from, _to, _i, _j));
@@ -112,8 +112,8 @@ contract Curve is IRouter, Ownable {
         address _pool,
         address _from,
         address _to,
-        int128 _i,
-        int128 _j
+        uint256 _i,
+        uint256 _j
     ) public view returns (bytes32) {
         bytes32 hash = keccak256(abi.encodePacked(_pool, _from, _to, _i, _j));
 
@@ -158,11 +158,11 @@ contract Curve is IRouter, Ownable {
         IERC20(_from).approve(curve.pool, 0);
         IERC20(_from).approve(curve.pool, _amount);
 
-        if (_to == weth) ICurvePoolToETH(curve.pool).exchange(curve.i, curve.j, _amount, 0, false);
+        if (_to == weth) ICurvePoolToETH(curve.pool).exchange(curve.i, curve.j, _amount, 0, true);
         else ICurvePool(curve.pool).exchange_underlying(curve.i, curve.j, _amount, 0);
 
         uint256 out = getBalance(_to, address(this));
-
+        console.log("Out: ", out);
         // If toTOken is weth, withdraw ETH from it
         if (_to == weth) {
             TransferHelper.safeTransferETH(exchange, out);
