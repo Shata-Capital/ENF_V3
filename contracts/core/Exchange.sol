@@ -85,9 +85,9 @@ contract Exchange is IExchange, Ownable {
         // Get Swapped output amount
         uint256 outAmt = getBalance(_to, address(this));
 
+        console.log("Ex: ", outAmt);
         // Transfer to Controller
-        if (_to == weth) TransferHelper.safeTransfer(address(0), controller, outAmt);
-        else TransferHelper.safeTransfer(_to, controller, outAmt);
+        TransferHelper.safeTransfer(_to, controller, outAmt);
 
         return outAmt;
     }

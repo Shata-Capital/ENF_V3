@@ -130,7 +130,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
             for (uint256 i = 0; i < subStrategies.length; i++) {
                 // Calculate how much to deposit in one sub strategy
                 uint256 amountForSS = (_amount * subStrategies[i].allocPoint) / totalAllocPoint;
-                console.log("SS Amt: ", amountForSS, _amount);
+
                 if (amountForSS == 0) continue;
 
                 // Transfer asset to substrategy
@@ -390,6 +390,11 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
 
         emit RegisterSubStrategy(_subStrategy, _allocPoint);
     }
+
+    /**
+        Remove Substrategey from controller
+     */
+    function removeSubStrategy(uint256 index) public onlyOwner {}
 
     /**
         Set Default Deposit substrategy

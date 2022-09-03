@@ -5,9 +5,9 @@ const { utils } = require("ethers");
 
 const { usdcContract, uniV2RouterContract, uniV2FactoryContract, aaveContract, } = require("./externalContracts")
 
-const { usdc, weth, convexBooster, aavePid, curveAave, aaveLP, compoundLP, triLP, crv, stkAAVE, lqty, alcx, uniSwapV2Router, crvUsdcPath } = require("../constants/constants")
+const { usdc, weth, convexBooster, aavePid, curveAave, aaveLP, compoundLP, triLP, crv, stkAAVE, lqty, alcx, uniSwapV2Router, crvUsdcPath, curveCRVETH } = require("../constants/constants")
 
-let vault, controller, aave, depositApprover, exchange
+let vault, controller, aave, depositApprover, exchange, curve
 
 function toEth(num) {
     return utils.formatEther(num)
@@ -51,25 +51,31 @@ describe("ENF Vault test", async () => {
         // Deploy Vault
         console.log("Deploying Vault".green)
         const Vault = await ethers.getContractFactory("EFVault")
-        vault = await Vault.deploy(usdc, "ENF LP", "ENF")
+        vault = await upgrades.deployProxy(Vault, [usdc, "ENF LP", "ENF"])
         console.log(`Vault deployed at: ${vault.address}\n`)
 
         // Deploy Controller
         console.log("Deploying Controller".green)
         const Controller = await ethers.getContractFactory("Controller")
-        controller = await Controller.deploy(vault.address, usdc, treasury.address)
+        controller = await upgrades.deployProxy(Controller, [vault.address, usdc, treasury.address, weth])
         console.log(`Controller deployed at: ${controller.address}\n`)
 
         // Deploy Aave
         console.log("Deploying AAVE".green)
         const Aave = await ethers.getContractFactory("Aave")
-        aave = await Aave.deploy(curveAave, aaveLP, controller.address, usdc, convexBooster, aavePid)
+        aave = await upgrades.deployProxy(Aave, [curveAave, aaveLP, controller.address, usdc, convexBooster, aavePid])
         console.log(`Aave deployed at: ${aave.address}\n`)
 
         // Deploy Exchange
         console.log("Deploying Exchange".green)
         const Exchange = await ethers.getContractFactory("Exchange")
         exchange = await Exchange.deploy(weth, controller.address)
+
+        // Deploy routers
+        console.log("\nDeploying Curve".green)
+        const Curve = await ethers.getContractFactory("Curve")
+        curve = await Curve.deploy(weth, exchange.address)
+        console.log("Curve is deployed: ", curve.address)
 
         /**
          * Wiring Contracts with each other 
@@ -96,25 +102,21 @@ describe("ENF Vault test", async () => {
 
         // Set DepositSlippage on AAVE
         await aave.setDepositSlippage(100)
-        console.log("Deposit slippage set")
+        console.log("Aave Deposit slippage set")
 
         // Set WithdrawSlippage on AAVE
         await aave.setWithdrawSlippage(100)
-        console.log("Withdraw slippage set")
+        console.log("Aave Withdraw slippage set")
 
         // Set CRV token for harvest token
         await aave.addRewardToken(crv)
 
-        // Set CRV-USDC to exchange
-        await exchange.addPath(
-            2,
-            uniSwapV2Router,
-            [crv, weth, usdc]
-        )
+        // Set CRV-USDC to CURVE
+        await curve.addCurvePool(...curveCRVETH)
 
         // Get CRV-USDC path index
-        const index = await exchange.getPathIndex(uniSwapV2Router, [crv, weth, usdc])
-        console.log(`\tCRV-USDC Path index: ${index}\n`)
+        const index = await curve.getPathIndex(...curveCRVETH)
+        console.log(`\tCRV-USDC Uni v3 Path index: ${index}\n`)
     })
 
     it("Vault Deployed", async () => {
@@ -193,7 +195,7 @@ describe("ENF Vault test", async () => {
     })
 
     it("Withdraw 10 USDC will be reverted", async () => {
-        await expect(vault.connect(alice).withdraw(fromUSDC(10), alice.address)).to.revertedWith("INVALID_WITHDRAWN_SHARES")
+        await expect(vault.connect(alice).withdraw(fromUSDC(10), alice.address)).to.revertedWith("EXCEED_TOTAL_DEPOSIT")
     })
 
     it("Deposit 1000 USDC", async () => {
@@ -220,19 +222,17 @@ describe("ENF Vault test", async () => {
     ////////////////////////////////////////////////
     //                  HARVEST                   //
     ////////////////////////////////////////////////
-    // it("Pass Time and block number", async () => {
-    //     await network.provider.send("evm_increaseTime", [3600 * 24 * 60]);
-    //     await network.provider.send("evm_mine");
-    //     await network.provider.send("evm_mine");
-    //     await network.provider.send("evm_mine");
-    // })
+    it("Pass Time and block number", async () => {
+        await network.provider.send("evm_increaseTime", [3600 * 24 * 60]);
+        await network.provider.send("evm_mine");
+    })
 
     it("Harvest AAVE", async () => {
         // Get CRV-USDC path index
-        const index = await exchange.getPathIndex(uniSwapV2Router, [crv, weth, usdc])
+        const index = await curve.getPathIndex(...curveCRVETH)
         console.log(`\tCRV-USDC Path index: ${index}\n`)
 
-        await controller.harvest([0], [index])
+        await controller.harvest([0], [index], [curve.address])
 
         // Read Total Assets
         const total = await vault.totalAssets()

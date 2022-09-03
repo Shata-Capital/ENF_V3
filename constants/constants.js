@@ -119,5 +119,29 @@ exports.balancerETHToUSDCSwap = [
  */
 exports.univ3CRVUSDC = [
     "0xD533a949740bb3306d119CC777fa900bA034cd52",
-    "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+    "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    3000
+]
+
+exports.univ3CRVETH = [
+    "0xD533a949740bb3306d119CC777fa900bA034cd52",
+    "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    3000
+]
+
+exports.univ3ETHUSDC = [
+    "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    "0xD533a949740bb3306d119CC777fa900bA034cd52", // CRV
+    500
+]
+
+/**
+ * CURVE CRV_USDC
+ */
+exports.curveCRVETH = [
+    "0x8301ae4fc9c624d1d396cbdaa1ed877821d7c511", //pool
+    "0xD533a949740bb3306d119CC777fa900bA034cd52", // from
+    "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // To
+    1, // i
+    0 // j
 ]

@@ -13,8 +13,6 @@ import "./interfaces/IConvexBooster.sol";
 import "./interfaces/IConvexReward.sol";
 import "./interfaces/IPrice.sol";
 
-import "hardhat/console.sol";
-
 contract Aave is OwnableUpgradeable, ISubStrategy {
     using SafeMath for uint256;
 

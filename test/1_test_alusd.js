@@ -3,11 +3,11 @@ const { expect, util } = require("chai");
 const colors = require("colors")
 const { utils } = require("ethers");
 
-const { usdcContract, uniV2RouterContract, uniV2FactoryContract, lusdContract, } = require("./externalContracts")
+const { usdcContract, uniV2RouterContract, uniV2FactoryContract, alusdContract, } = require("./externalContracts")
 
-const { usdc, weth, convexBooster, lusdPid, lusdLP, curveLusd, aaveLP, compoundLP, triLP, crv, stkAAVE, lqty, alcx, uniSwapV2Router, crvUsdcPath, uniSwapV3Router, univ3CRVUSDC } = require("../constants/constants")
+const { usdc, weth, convexBooster, alusdPid, alusdLP, curveAlusd, crv, uniSwapV2Router, uniSwapV3Router, curveCRVETH, balancerV2Vault, balancerETHToUSDCSwap, balancerNoteToETHSwap, balancerNoteToUSDCAssets, balancerNoteToUSDCPools, crvUsdcPath, crvEthPath, ethUsdcPath } = require("../constants/constants")
 
-let vault, controller, lusd, depositApprover, exchange, univ3
+let vault, controller, alusd, depositApprover, exchange, uniV2, curve
 
 function toEth(num) {
     return utils.formatEther(num)
@@ -61,10 +61,10 @@ describe("ENF Vault test", async () => {
         console.log(`Controller deployed at: ${controller.address}\n`)
 
         // Deploy Alusd
-        console.log("Deploying LUSD".green)
-        const LUSD = await ethers.getContractFactory("Lusd")
-        lusd = await upgrades.deployProxy(LUSD, [curveLusd, lusdLP, controller.address, usdc, convexBooster, lusdPid])
-        console.log(`Lusd deployed at: ${lusd.address}\n`)
+        console.log("Deploying ALUSD".green)
+        const Alusd = await ethers.getContractFactory("Alusd")
+        alusd = await upgrades.deployProxy(Alusd, [curveAlusd, alusdLP, controller.address, usdc, convexBooster, alusdPid])
+        console.log(`Alusd deployed at: ${alusd.address}\n`)
 
         // Deploy Exchange
         console.log("Deploying Exchange".green)
@@ -72,13 +72,27 @@ describe("ENF Vault test", async () => {
         exchange = await Exchange.deploy(weth, controller.address)
 
         // Deploy routers
+        console.log("\nDeploying Uni V2 Router".green)
+        const UniV2 = await ethers.getContractFactory("UniswapV2")
+        uniV2 = await UniV2.deploy(weth, exchange.address)
+        console.log("Uni V2 is deployed: ", uniV2.address)
+
         console.log("\nDeploying Uni V3 Router".green)
         const UniV3 = await ethers.getContractFactory("UniswapV3")
-        uniV3 = await UniV3.deploy(uniSwapV3Router, exchange.address)
+        uniV3 = await UniV3.deploy(uniSwapV3Router, exchange.address, weth)
         console.log("Uni V3 is deployed: ", uniV3.address)
 
+        console.log("\nDeploying Balancer".green)
+        const Balancer = await ethers.getContractFactory("BalancerV2")
+        balancer = await Balancer.deploy(balancerV2Vault, exchange.address, weth)
+        console.log("Balancer V2 is Deployed: ", balancer.address)
+
+        console.log("\nDeploying Curve".green)
+        const Curve = await ethers.getContractFactory("Curve")
+        curve = await Curve.deploy(weth, exchange.address)
+        console.log("Curve is deployed: ", curve.address)
         /**
-         * Wiring Contracts with each other 
+         * Wiring Contracts with each other
          */
 
         // Set Vault on deposit approver
@@ -100,23 +114,49 @@ describe("ENF Vault test", async () => {
          * Set configuration
          */
 
-        // Set DepositSlippage on LUSD
-        await lusd.setDepositSlippage(100)
+        // Set DepositSlippage on ALUSD
+        await alusd.setDepositSlippage(100)
         console.log("Deposit slippage set")
 
-        // Set WithdrawSlippage on LUSD
-        await lusd.setWithdrawSlippage(100)
+        // Set WithdrawSlippage on ALUSD
+        await alusd.setWithdrawSlippage(100)
         console.log("Withdraw slippage set")
 
         // Set CRV token for harvest token
-        await lusd.addRewardToken(crv)
+        await alusd.addRewardToken(crv)
 
         // Set CRV-USDC to exchange
-        await uniV3.addPath(univ3CRVUSDC)
+        await uniV2.addPath(
+            uniSwapV2Router,
+            crvUsdcPath
+        )
 
+        // Set CRV-USDC to exchange
+        await uniV2.addPath(
+            uniSwapV2Router,
+            crvEthPath
+        )
+
+        // Set CRV-USDC to exchange
+        await uniV2.addPath(
+            uniSwapV2Router,
+            ethUsdcPath
+        )
+
+        // Set CRV-USDC to CURVE
+        await curve.addCurvePool(...curveCRVETH)
+
+        console.log("\nDeploying Balancer BatchSwap".green)
+        const BalancerBatch = await ethers.getContractFactory("BalancerBatchV2")
+        balancerBatch = await BalancerBatch.deploy(balancerV2Vault, exchange.address, weth)
+        console.log("Balancer Batch V2 is Deployed: ", balancerBatch.address)
+
+
+        // Set swaps on Balancer Batch
+        await balancerBatch.addPath(balancerNoteToUSDCPools, balancerNoteToUSDCAssets)
         // Get CRV-USDC path index
-        const index = await uniV3.getPathIndex(univ3CRVUSDC)
-        console.log(`\tCRV-USDC Uni v3 Path index: ${index}\n`)
+        const index = await uniV2.getPathIndex(uniSwapV2Router, crvUsdcPath)
+        console.log(`\tCRV-USDC Path index: ${index}\n`)
     })
 
     it("Vault Deployed", async () => {
@@ -142,13 +182,13 @@ describe("ENF Vault test", async () => {
         console.log(`\tUSDC of Alice: ${toUSDC(newUSDC)}`)
     })
 
-    // Register Lusd SS
-    it("Register Lusd with non-owner will be reverted", async () => {
-        await expect(controller.connect(alice).registerSubStrategy(lusd.address, 100)).to.revertedWith("Ownable: caller is not the owner")
+    // Register Alusd SS
+    it("Register Alusd with non-owner will be reverted", async () => {
+        await expect(controller.connect(alice).registerSubStrategy(alusd.address, 100)).to.revertedWith("Ownable: caller is not the owner")
     })
 
-    it("Register Lusd as 100 alloc point, check total alloc to be 100, ss length to be 1", async () => {
-        await controller.connect(deployer).registerSubStrategy(lusd.address, 100)
+    it("Register Alusd as 100 alloc point, check total alloc to be 100, ss length to be 1", async () => {
+        await controller.connect(deployer).registerSubStrategy(alusd.address, 100)
         const totalAlloc = await controller.totalAllocPoint()
         const ssLength = await controller.subStrategyLength()
 
@@ -157,8 +197,8 @@ describe("ENF Vault test", async () => {
         expect(ssLength).to.equal(1)
     })
 
-    it("Register Lusd will be reverted for duplication", async () => {
-        await expect(controller.connect(deployer).registerSubStrategy(lusd.address, 100)).to.revertedWith("ALREADY_REGISTERED")
+    it("Register Alusd will be reverted for duplication", async () => {
+        await expect(controller.connect(deployer).registerSubStrategy(alusd.address, 100)).to.revertedWith("ALREADY_REGISTERED")
     })
 
     ///////////////////////////////////////////////////
@@ -215,7 +255,7 @@ describe("ENF Vault test", async () => {
     })
 
     // it("Get Pid", async () => {
-    //     const triPID = await lusd.getPID(triLP)
+    //     const triPID = await alusd.getPID(triLP)
     //     console.log(`\tTriPool Pid: ${triPID}`)
     // })
 
@@ -230,12 +270,46 @@ describe("ENF Vault test", async () => {
     //     await network.provider.send("evm_mine");
     // })
 
-    it("Harvest LUSD", async () => {
+    it("Harvest ALUSD", async () => {
         // Get CRV-USDC path index
-        const index = await uniV3.getPathIndex(univ3CRVUSDC)
+        const index = await uniV2.getPathIndex(uniSwapV2Router, crvUsdcPath)
         console.log(`\tCRV-USDC Path index: ${index}\n`)
 
-        await controller.harvest([0], [index], [uniV3.address])
+        await controller.harvest([0], [index], [uniV2.address])
+
+        // Read Total Assets
+        const total = await vault.totalAssets()
+        console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
+    })
+
+    // it("Pass Time and block number", async () => {
+    //     await network.provider.send("evm_increaseTime", [3600 * 24 * 60]);
+    //     await network.provider.send("evm_mine");
+    //     await network.provider.send("evm_mine");
+    //     await network.provider.send("evm_mine");
+    // })
+
+    // it("Harvest ALUSD with multi-router", async () => {
+    //     // Get CRV-USDC path index
+    //     const index0 = await uniV2.getPathIndex(uniSwapV2Router, crvEthPath)
+    //     const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath)
+    //     console.log(`\tCRV-ETH Path index: ${index0}\n`)
+
+    //     await controller.harvest([0], [index0, index1], [uniV2.address, uniV2.address])
+
+    //     // Read Total Assets
+    //     const total = await vault.totalAssets()
+    //     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
+    // })
+
+    it("Harvest ALUSD with multi-router", async () => {
+        // Get CRV-USDC path index
+        const index0 = await curve.getPathIndex(...curveCRVETH)
+        const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath)
+        console.log(`\tCRV-ETH Path index: ${index0}\n`)
+        console.log(`\tETH-USDC Path index: ${index1}\n`)
+
+        await controller.harvest([0], [index0, index1], [curve.address, uniV2.address])
 
         // Read Total Assets
         const total = await vault.totalAssets()
@@ -246,33 +320,33 @@ describe("ENF Vault test", async () => {
     //              EMERGENCY WITHDRAW            //
     ////////////////////////////////////////////////
     it("Emergency Withdraw by non-owner will be reverted", async () => {
-        await expect(lusd.connect(alice).emergencyWithdraw()).to.be.revertedWith("Ownable: caller is not the owner")
+        await expect(alusd.connect(alice).emergencyWithdraw()).to.be.revertedWith("Ownable: caller is not the owner")
     })
 
     it("Emergency Withdraw", async () => {
-        await lusd.emergencyWithdraw()
+        await alusd.emergencyWithdraw()
     })
 
     // it("Get LP withdrawn", async () => {
-    //     const lpBal = await lusdContract(alice).balanceOf(deployer.address)
-    //     console.log(`\tLusd LP Withdrawn: ${toEth(lpBal)}`)
+    //     const lpBal = await alusdContract(alice).balanceOf(deployer.address)
+    //     console.log(`\tAlusd LP Withdrawn: ${toEth(lpBal)}`)
     // })
 
     /////////////////////////////////////////////////
     //               OWNER DEPOSIT                 //
     /////////////////////////////////////////////////
     it("Owner deposit will be reverted", async () => {
-        await expect(lusd.connect(alice).ownerDeposit(fromUSDC(100))).to.revertedWith("Ownable: caller is not the owner")
+        await expect(alusd.connect(alice).ownerDeposit(fromUSDC(100))).to.revertedWith("Ownable: caller is not the owner")
     })
 
     it("Owner Deposit", async () => {
         // Approve to deposit approver
-        await usdcContract(deployer).approve(lusd.address, fromUSDC(1000))
+        await usdcContract(deployer).approve(alusd.address, fromUSDC(1000))
 
-        await lusd.connect(deployer).ownerDeposit(fromUSDC(1000))
+        await alusd.connect(deployer).ownerDeposit(fromUSDC(1000))
 
         // Read Total Assets
-        const total = await lusd.totalAssets()
+        const total = await alusd.totalAssets()
         console.log(`\n\tTotal USDC Balance: ${toUSDC(total)}`)
     })
 })

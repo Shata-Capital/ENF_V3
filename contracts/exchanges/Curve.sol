@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/ICurvePool.sol";
 import "../utils/TransferHelper.sol";
 import "../interfaces/IRouter.sol";
+import "hardhat/console.sol";
 
 contract Curve is IRouter, Ownable {
     using SafeMath for uint256;
@@ -116,7 +117,7 @@ contract Curve is IRouter, Ownable {
     ) public view returns (bytes32) {
         bytes32 hash = keccak256(abi.encodePacked(_pool, _from, _to, _i, _j));
 
-        if (pools[hash].pool != address(0)) return 0;
+        if (pools[hash].pool == address(0)) return 0;
         else return hash;
     }
 
@@ -135,7 +136,7 @@ contract Curve is IRouter, Ownable {
     }
 
     /**
-        Uniswap V3 Swap 
+        Cruve Swap 
      */
     function swap(
         address _from,
@@ -147,9 +148,32 @@ contract Curve is IRouter, Ownable {
         require(pathFrom(_index) == _from, "INVALID_FROM_ADDRESS");
         require(pathTo(_index) == _to, "INVALID_TO_ADDRESS");
 
+        uint256 balance = getBalance(_from, address(this));
+        require(balance >= _amount, "INSUFFICIENT_TOKEN_TRANSFERED");
+
         // Get Curve Pool address
         CurvePool storage curve = pools[_index];
 
-        ICurvePool(curve.pool).exchange_underlying(curve.i, curve.j, _amount, 0);
+        // Approve token
+        IERC20(_from).approve(curve.pool, 0);
+        IERC20(_from).approve(curve.pool, _amount);
+
+        if (_to == weth) ICurvePoolToETH(curve.pool).exchange(curve.i, curve.j, _amount, 0, false);
+        else ICurvePool(curve.pool).exchange_underlying(curve.i, curve.j, _amount, 0);
+
+        uint256 out = getBalance(_to, address(this));
+
+        // If toTOken is weth, withdraw ETH from it
+        if (_to == weth) {
+            TransferHelper.safeTransferETH(exchange, out);
+        } else {
+            // Transfer output token to exchnage
+            TransferHelper.safeTransfer(_to, exchange, out);
+        }
+    }
+
+    function getBalance(address asset, address account) internal view returns (uint256) {
+        if (address(asset) == address(weth)) return address(account).balance;
+        else return IERC20(asset).balanceOf(account);
     }
 }
