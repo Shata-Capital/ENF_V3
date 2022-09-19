@@ -63,9 +63,9 @@
     "coverage": "HARDHAT_DEPLOY_FIXTURE=true hardhat coverage",
     "typechain": "TS_NODE_TRANSPILE_ONLY=true hardhat typechain",
     "fork": "hardhat node",
-    "deploy": "hardhat run scripts/deployLocal.js",
+    "deploy": "hardhat run scripts/deploy.js --network localnet",
     "deploy:mainnet": "hardhat --network bsc_mainnet run scripts/deploy.js",
     "deploy:testnet": "hardhat --network ropsten run scripts/deploy.js",
-    "deploy:localnet": "hardhat --network localnet run scripts/deploy.ts"
+    "deploy:localnet": "hardhat --network localnet run scripts/deploy.js"
   }
 }
