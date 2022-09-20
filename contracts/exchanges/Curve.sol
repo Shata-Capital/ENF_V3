@@ -76,6 +76,8 @@ contract Curve is IRouter, Ownable {
         // Add new Curve pool
         pools[hash] = CurvePool({pool: _pool, from: _from, to: _to, i: _i, j: _j});
 
+        pathBytes.push(hash);
+
         emit AddCurvePool(_pool, _from, _to, _i, _j);
 
         return hash;
@@ -88,7 +90,7 @@ contract Curve is IRouter, Ownable {
         // Duplication check
         require(pools[index].pool != address(0), "NON_EXIST_POOL");
 
-        CurvePool storage curvePool = pools[index];
+        CurvePool memory curvePool = pools[index];
 
         delete pools[index];
 

@@ -27,7 +27,7 @@ function fromUSDC(num) {
 
 async function swapUSDC(caller) {
 
-    await uniV2RouterContract(caller).swapExactETHForTokens(
+    await uniV2RouterContract(caller).swapExactETHForTokensSupportingFeeOnTransferTokens(
         0,
         [
             weth, usdc
@@ -157,6 +157,11 @@ describe("ENF Vault test", async () => {
         // Get CRV-USDC path index
         const index = await uniV2.getPathIndex(uniSwapV2Router, crvUsdcPath)
         console.log(`\tCRV-USDC Path index: ${index}\n`)
+        
+        // Set Routers to exchange
+        await exchange.listRouter(uniV2.address)
+        await exchange.listRouter(curve.address)
+        await exchange.listRouter(balancerBatch.address)
     })
 
     it("Vault Deployed", async () => {
@@ -270,17 +275,17 @@ describe("ENF Vault test", async () => {
     //     await network.provider.send("evm_mine");
     // })
 
-    it("Harvest ALUSD", async () => {
-        // Get CRV-USDC path index
-        const index = await uniV2.getPathIndex(uniSwapV2Router, crvUsdcPath)
-        console.log(`\tCRV-USDC Path index: ${index}\n`)
+    // it("Harvest ALUSD", async () => {
+    //     // Get CRV-USDC path index
+    //     const index = await uniV2.getPathIndex(uniSwapV2Router, crvUsdcPath)
+    //     console.log(`\tCRV-USDC Path index: ${index}\n`)
 
-        await controller.harvest([0], [index], [uniV2.address])
+    //     await controller.harvest([0], [index], [uniV2.address])
 
-        // Read Total Assets
-        const total = await vault.totalAssets()
-        console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
-    })
+    //     // Read Total Assets
+    //     const total = await vault.totalAssets()
+    //     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
+    // })
 
     // it("Pass Time and block number", async () => {
     //     await network.provider.send("evm_increaseTime", [3600 * 24 * 60]);

@@ -68,6 +68,20 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
 
     event RegisterSubStrategy(address subStrategy, uint256 allocPoint);
 
+    event SetVault(address vault);
+
+    event SetApySort(uint256[] apySort);
+
+    event SetTreasury(address treasury);
+
+    event SetExchange(address exchange);
+
+    event SetWithdrawFee(uint256 withdrawFee);
+
+    event SetDefaultDepositSS(uint8 defaultDepositSS);
+
+    event SetDefaultOption(bool isDefault);
+
     // constructor() {
     //     _disableInitializers();
     // }
@@ -127,9 +141,20 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
             // Calls deposit function on SubStrategy
             depositAmt = ISubStrategy(subStrategies[defaultDepositSS].subStrategy).deposit(_amount);
         } else {
+            uint256 amtLeft = _amount;
+            uint256 allocLeft = totalAllocPoint;
+
             for (uint256 i = 0; i < subStrategies.length; i++) {
                 // Calculate how much to deposit in one sub strategy
-                uint256 amountForSS = (_amount * subStrategies[i].allocPoint) / totalAllocPoint;
+                uint256 amountForSS;
+
+                // substract current alloc point from allocLeft
+                allocLeft -= subStrategies[i].allocPoint;
+
+                // If alloc left is zero, means there is no SS to which the asset will be sent
+                if (allocLeft == 0) amountForSS = amtLeft;
+                // If alloc point is still left, calculate amt by linear functionality
+                else amountForSS = (_amount * subStrategies[i].allocPoint) / totalAllocPoint;
 
                 if (amountForSS == 0) continue;
 
@@ -139,6 +164,8 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
                 // Calls deposit function on SubStrategy
                 uint256 amount = ISubStrategy(subStrategies[i].subStrategy).deposit(amountForSS);
                 depositAmt += amount;
+
+                amtLeft -= amountForSS;
             }
         }
     }
@@ -315,6 +342,8 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     function setVault(address _vault) public onlyOwner {
         require(_vault != address(0), "INVALID_ADDRESS");
         vault = _vault;
+
+        emit SetVault(vault);
     }
 
     /**
@@ -324,6 +353,8 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     function setAPYSort(uint256[] memory _apySort) public onlyOwner {
         require(_apySort.length == subStrategies.length, "INVALID_APY_SORT");
         apySort = _apySort;
+
+        emit SetApySort(apySort);
     }
 
     /**
@@ -332,6 +363,8 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     function setTreasury(address _treasury) public onlyOwner {
         require(_treasury != address(0), "ZERO_ADDRESS");
         treasury = _treasury;
+
+        emit SetTreasury(treasury);
     }
 
     /**
@@ -340,6 +373,8 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     function setExchange(address _exchange) public onlyOwner {
         require(_exchange != address(0), "ZERO_ADDRESS");
         exchange = _exchange;
+
+        emit SetExchange(exchange);
     }
 
     /**
@@ -348,6 +383,8 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     function setWithdrawFee(uint256 _withdrawFee) public onlyOwner {
         require(_withdrawFee < magnifier, "INVALID_WITHDRAW_FEE");
         withdrawFee = _withdrawFee;
+
+        emit SetWithdrawFee(withdrawFee);
     }
 
     /**
@@ -397,6 +434,8 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     function setDefaultDepositSS(uint8 _ssId) public onlyOwner {
         require(_ssId < subStrategies.length, "INVALID_SS_ID");
         defaultDepositSS = _ssId;
+
+        emit SetDefaultDepositSS(defaultDepositSS);
     }
 
     /**
@@ -404,5 +443,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
      */
     function setDefaultOption(bool _isDefault) public onlyOwner {
         isDefault = _isDefault;
+
+        emit SetDefaultOption(isDefault);
     }
 }

@@ -62,6 +62,16 @@ contract Cusdc is OwnableUpgradeable, ISubStrategy {
 
     event EmergencyWithdraw(uint256 amount);
 
+    event SetController(address controller);
+
+    event SetDepositSlippage(uint256 depositSlippage);
+
+    event SetWithdrawSlippage(uint256 withdrawSlippage);
+
+    event SetHarvestGap(uint256 harvestGap);
+
+    event SetMaxDeposit(uint256 maxDeposit);
+
     function initialize(
         address _usdc,
         address _controller,
@@ -112,9 +122,10 @@ contract Cusdc is OwnableUpgradeable, ISubStrategy {
 
         uint256 nTokenTotal = IERC20(nUSDC).totalSupply();
 
-        uint256 underlyingDenominated = INusdc(nUSDC).getPresentValueUnderlyingDenominated();
+        int256 underlyingDenominated = INusdc(nUSDC).getPresentValueUnderlyingDenominated();
 
-        return ((nTokenBal * underlyingDenominated) * usdcDecimal) / noteDecimal / nTokenTotal;
+        if (underlyingDenominated < 0) return 0;
+        else return ((nTokenBal * uint256(underlyingDenominated)) * usdcDecimal) / noteDecimal / nTokenTotal;
     }
 
     /**
@@ -224,7 +235,7 @@ contract Cusdc is OwnableUpgradeable, ISubStrategy {
 
         // Transfer Reward tokens to controller
         uint256 noteBal = IERC20(note).balanceOf(address(this));
-        console.log("NOte harvested: ", noteBal);
+
         TransferHelper.safeTransfer(note, controller, noteBal);
 
         // Update latest block timestamp
@@ -284,6 +295,8 @@ contract Cusdc is OwnableUpgradeable, ISubStrategy {
     function setController(address _controller) public onlyOwner {
         require(_controller != address(0), "INVALID_LP_TOKEN");
         controller = _controller;
+
+        emit SetController(controller);
     }
 
     /**
@@ -293,6 +306,8 @@ contract Cusdc is OwnableUpgradeable, ISubStrategy {
         require(_slippage < magnifier, "INVALID_SLIPPAGE");
 
         depositSlippage = _slippage;
+
+        emit SetDepositSlippage(depositSlippage);
     }
 
     /**
@@ -302,6 +317,8 @@ contract Cusdc is OwnableUpgradeable, ISubStrategy {
         require(_slippage < magnifier, "INVALID_SLIPPAGE");
 
         withdrawSlippage = _slippage;
+
+        emit SetWithdrawSlippage(withdrawSlippage);
     }
 
     /**
@@ -310,6 +327,8 @@ contract Cusdc is OwnableUpgradeable, ISubStrategy {
     function setHarvestGap(uint256 _harvestGap) public onlyOwner {
         require(_harvestGap > 0, "INVALID_HARVEST_GAP");
         harvestGap = _harvestGap;
+
+        emit SetHarvestGap(harvestGap);
     }
 
     /**
@@ -318,5 +337,7 @@ contract Cusdc is OwnableUpgradeable, ISubStrategy {
     function setMaxDeposit(uint256 _maxDeposit) public onlyOwner {
         require(_maxDeposit > 0, "INVALID_MAX_DEPOSIT");
         maxDeposit = _maxDeposit;
+
+        emit SetMaxDeposit(maxDeposit);
     }
 }

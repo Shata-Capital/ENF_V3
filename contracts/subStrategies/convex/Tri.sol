@@ -64,7 +64,31 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
     // Max Deposit
     uint256 public override maxDeposit;
 
+    uint256 public constant virtualPriceMag = 1e30;
+
+    event OwnerDeposit(uint256 lpAmount);
+
     event EmergencyWithdraw(uint256 lpAmount);
+
+    event SetController(address controller);
+
+    event SetDepositSlippage(uint256 depositSlippage);
+
+    event SetWithdrawSlippage(uint256 withdrawSlippage);
+
+    event SetPoolId(uint256 pId);
+
+    event SetLPToken(address lpToken);
+
+    event SetCurvePool(address curvePool);
+
+    event SetHarvestGap(uint256 harvestGap);
+
+    event SetMaxDeposit(uint256 maxDeposit);
+
+    event AddRewardToken(address rewardToken);
+
+    event RemoveRewardToken(address rewardToken);
 
     function initialize(
         address _curvePool,
@@ -191,11 +215,12 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
         uint256 lpWithdrawn = IERC20(lpToken).balanceOf(address(this));
 
         // See if LP withdrawn as requested amount
-        require(lpWithdrawn == lpAmt, "LP_WITHDRAWN_NOT_MATCH");
+        require(lpWithdrawn >= lpAmt, "LP_WITHDRAWN_NOT_MATCH");
         totalLP -= lpWithdrawn;
 
         // Calculate Minimum output
-        uint256 minAmt = ICurvePoolTri(curvePool).calc_withdraw_one_coin(lpWithdrawn, tokenId);
+        // uint256 minAmt = ICurvePoolTri(curvePool).calc_withdraw_one_coin(lpWithdrawn, tokenId);
+        uint256 minAmt = lpWithdrawn * IPrice(lpToken).get_virtual_price() / virtualPriceMag;
         minAmt = (minAmt * (magnifier - withdrawSlippage)) / magnifier;
 
         // Approve LP token to Curve
@@ -264,6 +289,8 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
 
         // Call deposit
         _deposit(_amount);
+
+        emit OwnerDeposit(_amount);
     }
 
     /**
@@ -296,6 +323,8 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
     function setController(address _controller) public onlyOwner {
         require(_controller != address(0), "INVALID_LP_TOKEN");
         controller = _controller;
+
+        emit SetController(controller);
     }
 
     /**
@@ -305,6 +334,8 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
         require(_slippage < magnifier, "INVALID_SLIPPAGE");
 
         depositSlippage = _slippage;
+
+        emit SetDepositSlippage(depositSlippage);
     }
 
     /**
@@ -314,6 +345,8 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
         require(_slippage < magnifier, "INVALID_SLIPPAGE");
 
         withdrawSlippage = _slippage;
+
+        emit SetWithdrawSlippage(withdrawSlippage);
     }
 
     /**
@@ -322,6 +355,8 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
     function setPoolId(uint256 _pId) public onlyOwner {
         require(_pId < IConvexBooster(convex).poolLength(), "INVALID_POOL_ID");
         pId = _pId;
+
+        emit SetPoolId(pId);
     }
 
     /**
@@ -330,6 +365,8 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
     function setLPToken(address _lpToken) public onlyOwner {
         require(_lpToken != address(0), "INVALID_LP_TOKEN");
         lpToken = _lpToken;
+
+        emit SetLPToken(lpToken);
     }
 
     /**
@@ -338,6 +375,8 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
     function setCurvePool(address _curvePool) public onlyOwner {
         require(_curvePool != address(0), "INVALID_LP_TOKEN");
         curvePool = _curvePool;
+
+        emit SetCurvePool(curvePool);
     }
 
     /**
@@ -346,6 +385,8 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
     function setHarvestGap(uint256 _harvestGap) public onlyOwner {
         require(_harvestGap > 0, "INVALID_HARVEST_GAP");
         harvestGap = _harvestGap;
+
+        emit SetHarvestGap(harvestGap);
     }
 
     /**
@@ -354,6 +395,8 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
     function setMaxDeposit(uint256 _maxDeposit) public onlyOwner {
         require(_maxDeposit > 0, "INVALID_MAX_DEPOSIT");
         maxDeposit = _maxDeposit;
+
+        emit SetMaxDeposit(maxDeposit);
     }
 
     // Add reward token to list
@@ -364,6 +407,8 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
             require(rewardTokens[i] != _token, "DUPLICATE_REWARD_TOKEN");
         }
         rewardTokens.push(_token);
+
+        emit AddRewardToken(_token);
     }
 
     // Remove reward token from list
@@ -383,5 +428,7 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
         }
 
         require(succeed, "REMOVE_REWARD_TOKEN_FAIL");
+
+        emit RemoveRewardToken(_token);
     }
 }

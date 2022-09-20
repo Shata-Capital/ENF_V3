@@ -76,6 +76,8 @@ contract BalancerV2 is IRouter, Ownable {
 
         singleSwapInfos[hash] = _swap;
 
+        pathBytes.push(hash);
+
         emit AddBalancerSwap(hash, _swap);
 
         return hash;
@@ -98,7 +100,7 @@ contract BalancerV2 is IRouter, Ownable {
         );
 
         // TempSave for assets info
-        SingleSwapInfo storage _swap = singleSwapInfos[index];
+        SingleSwapInfo memory _swap = singleSwapInfos[index];
 
         // Delete path record from mapping
         delete singleSwapInfos[index];

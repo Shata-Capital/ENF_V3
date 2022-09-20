@@ -73,6 +73,8 @@ contract BalancerBatchV2 is IRouter, Ownable {
         poolBatchIds[hash] = _pools;
         balancerBatchAssets[hash] = _assets;
 
+        pathBytes.push(hash);
+
         emit AddBalancerBatchSwap(hash, _assets);
 
         return hash;
@@ -92,7 +94,7 @@ contract BalancerBatchV2 is IRouter, Ownable {
         require(balancerBatchAssets[index].length != 0, "NON_EXIST_PATH");
 
         // TempSave for assets info
-        IAsset[] storage assets = balancerBatchAssets[index];
+        IAsset[] memory assets = balancerBatchAssets[index];
 
         // Delete path record from mapping
         delete balancerBatchAssets[index];

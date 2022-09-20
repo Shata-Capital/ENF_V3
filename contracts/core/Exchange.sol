@@ -15,9 +15,13 @@ contract Exchange is IExchange, Ownable {
 
     address public controller;
 
-    address[] public routers;
+    mapping(address => bool) public routerListed;
 
     address public weth;
+
+    event RouterListed(address router);
+
+    event RouterDelisted(address router);
 
     constructor(address _weth, address _controller) {
         controller = _controller;
@@ -44,11 +48,11 @@ contract Exchange is IExchange, Ownable {
         bytes32 _index,
         uint256 _amount
     ) external override onlyController returns (uint256) {
+        // Only Listed router can be used
+        require(routerListed[_router], "ONLY_LISTED_ROUTER");
+
         // Transfer token from controller
         TransferHelper.safeTransferFrom(_from, controller, address(_router), _amount);
-        // Approve token to router
-        IERC20(_from).approve(_router, 0);
-        IERC20(_from).approve(_router, _amount);
 
         // Swap token using uniswap/sushiswap
         IRouter(_router).swap(_from, _to, _index, _amount);
@@ -75,6 +79,9 @@ contract Exchange is IExchange, Ownable {
         bytes32 _index,
         uint256 _amount
     ) external payable override onlyController returns (uint256) {
+        // Only Listed router can be used
+        require(routerListed[_router], "ONLY_LISTED_ROUTER");
+        
         require(msg.value >= _amount, "INSUFFICIENT_TRANSFER");
         // Transfer ETH to router
         TransferHelper.safeTransferETH(_router, _amount);
@@ -95,5 +102,20 @@ contract Exchange is IExchange, Ownable {
     function getBalance(address asset, address account) internal view returns (uint256) {
         if (address(asset) == address(weth)) return address(account).balance;
         else return IERC20(asset).balanceOf(account);
+    }
+
+    /**
+        SET CONFIGURATION
+     */
+    function listRouter(address router) public onlyOwner {
+        routerListed[router] = true;
+
+        emit RouterListed(router);
+    }
+
+    function delistRouter(address router) public onlyOwner {
+        routerListed[router] = false;
+
+        emit RouterDelisted(router);
     }
 }

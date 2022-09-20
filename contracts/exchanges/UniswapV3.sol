@@ -96,7 +96,7 @@ contract UniswapV3 is IRouter, Ownable {
     function removePath(bytes32 index) public onlyOwner {
         require(paths[index].tokenIn != address(0) && paths[index].tokenOut != address(0), "NON_EXIST_PATH");
 
-        PathInfo storage path = paths[index];
+        PathInfo memory path = paths[index];
         // Delete path record from mapping
         delete paths[index];
 
@@ -134,7 +134,7 @@ contract UniswapV3 is IRouter, Ownable {
         address _to,
         bytes32 _index,
         uint256 _amount
-    ) external override {
+    ) external override onlyExchange{
         PathInfo storage _path = paths[_index];
 
         // Check Path from and to

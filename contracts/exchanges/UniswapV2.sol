@@ -63,6 +63,8 @@ contract UniswapV2 is IRouter, Ownable {
         // Duplication check
         require(paths[hash].path.length == 0, "ALREADY_EXIST_PATH");
 
+        pathBytes.push(hash);
+
         // Register path
         pathBytes.push(hash);
         paths[hash].path = _path;
@@ -86,7 +88,8 @@ contract UniswapV2 is IRouter, Ownable {
     function removePath(bytes32 index) public onlyOwner {
         require(paths[index].path.length != 0, "NON_EXIST_PATH");
 
-        address[] storage path = paths[index].path;
+        address[] memory path = paths[index].path;
+
         // Delete path record from mapping
         delete paths[index];
 
@@ -131,6 +134,8 @@ contract UniswapV2 is IRouter, Ownable {
 
         uint256 balance = getBalance(_from, address(this));
 
+        console.log("From token: ", _from, paths[_index].path[0], paths[_index].path[1]);
+        console.log("balance: ", getBalance(_from, address(this)), _amount);
         require(balance >= _amount, "INSUFFICIENT_TOKEN_TRANSFERED");
 
         // If fromToken is weth, no need to approve

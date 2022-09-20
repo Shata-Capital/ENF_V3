@@ -64,7 +64,31 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     // Max Deposit
     uint256 public override maxDeposit;
 
+    uint256 public constant virtualPriceMag = 1e30;
+
+    event OwnerDeposit(uint256 lpAmount);
+
     event EmergencyWithdraw(uint256 lpAmount);
+
+    event SetController(address controller);
+
+    event SetDepositSlippage(uint256 depositSlippage);
+
+    event SetWithdrawSlippage(uint256 withdrawSlippage);
+
+    event SetPoolId(uint256 pId);
+
+    event SetLPToken(address lpToken);
+
+    event SetCurvePool(address curvePool);
+
+    event SetHarvestGap(uint256 harvestGap);
+
+    event SetMaxDeposit(uint256 maxDeposit);
+
+    event AddRewardToken(address rewardToken);
+
+    event RemoveRewardToken(address rewardToken);
 
     function initialize(
         address _curvePool,
@@ -114,7 +138,10 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     */
     function _totalAssets() internal view returns (uint256) {
         if (totalLP == 0) return 0;
-        uint256 assets = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, totalLP, tokenId);
+        // uint256 assets = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, totalLP, tokenId);
+
+        uint256 assets = totalLP * IPrice(lpToken).get_virtual_price() / virtualPriceMag;
+
         return assets;
     }
 
@@ -143,14 +170,17 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
         IERC20(usdc).approve(curvePool, 0);
         IERC20(usdc).approve(curvePool, _amount);
 
-        // Calculate LP output expect to avoid front running
-        uint256[4] memory amounts = [0, 0, _amount, 0];
-        uint256 expectOutput = ICurvePoolAlusd(curvePool).calc_token_amount(lpToken, amounts, true);
+        // // Calculate LP output expect to avoid front running
+        // uint256[4] memory amounts = [0, 0, _amount, 0];
+        // uint256 expectOutput = ICurvePoolAlusd(curvePool).calc_token_amount(lpToken, amounts, true);
+
+        uint256 expectOutput = _amount * virtualPriceMag / IPrice(lpToken).get_virtual_price();
 
         // Calculate Minimum output considering slippage
         uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
 
         // Add liquidity to Curve pool
+        uint256[4] memory amounts = [0, 0, _amount, 0];
         ICurvePoolAlusd(curvePool).add_liquidity(lpToken, amounts, minOutput);
 
         // Get LP token amount output
@@ -191,11 +221,12 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
         uint256 lpWithdrawn = IERC20(lpToken).balanceOf(address(this));
 
         // See if LP withdrawn as requested amount
-        require(lpWithdrawn == lpAmt, "LP_WITHDRAWN_NOT_MATCH");
+        require(lpWithdrawn >= lpAmt, "LP_WITHDRAWN_NOT_MATCH");
         totalLP -= lpWithdrawn;
 
         // Calculate Minimum output
-        uint256 minAmt = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, lpWithdrawn, tokenId);
+        // uint256 minAmt = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, lpWithdrawn, tokenId);
+        uint256 minAmt = lpWithdrawn * IPrice(lpToken).get_virtual_price() / virtualPriceMag;
         minAmt = (minAmt * (magnifier - withdrawSlippage)) / magnifier;
 
         // Approve LP token to Curve
@@ -265,6 +296,8 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
 
         // Call deposit
         _deposit(_amount);
+
+        emit OwnerDeposit(_amount);
     }
 
     /**
@@ -297,6 +330,8 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     function setController(address _controller) public onlyOwner {
         require(_controller != address(0), "INVALID_LP_TOKEN");
         controller = _controller;
+
+        emit SetController(controller);
     }
 
     /**
@@ -306,6 +341,8 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
         require(_slippage < magnifier, "INVALID_SLIPPAGE");
 
         depositSlippage = _slippage;
+
+        emit SetDepositSlippage(depositSlippage);
     }
 
     /**
@@ -315,6 +352,8 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
         require(_slippage < magnifier, "INVALID_SLIPPAGE");
 
         withdrawSlippage = _slippage;
+
+        emit SetWithdrawSlippage(withdrawSlippage);
     }
 
     /**
@@ -323,6 +362,8 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     function setPoolId(uint256 _pId) public onlyOwner {
         require(_pId < IConvexBooster(convex).poolLength(), "INVALID_POOL_ID");
         pId = _pId;
+
+        emit SetPoolId(pId);
     }
 
     /**
@@ -331,6 +372,8 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     function setLPToken(address _lpToken) public onlyOwner {
         require(_lpToken != address(0), "INVALID_LP_TOKEN");
         lpToken = _lpToken;
+
+        emit SetLPToken(lpToken);
     }
 
     /**
@@ -339,6 +382,8 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     function setCurvePool(address _curvePool) public onlyOwner {
         require(_curvePool != address(0), "INVALID_LP_TOKEN");
         curvePool = _curvePool;
+
+        emit SetCurvePool(curvePool);
     }
 
     /**
@@ -347,6 +392,8 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     function setHarvestGap(uint256 _harvestGap) public onlyOwner {
         require(_harvestGap > 0, "INVALID_HARVEST_GAP");
         harvestGap = _harvestGap;
+
+        emit SetHarvestGap(harvestGap);
     }
 
     /**
@@ -355,6 +402,8 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     function setMaxDeposit(uint256 _maxDeposit) public onlyOwner {
         require(_maxDeposit > 0, "INVALID_MAX_DEPOSIT");
         maxDeposit = _maxDeposit;
+
+        emit SetMaxDeposit(maxDeposit);
     }
 
     // Add reward token to list
@@ -365,6 +414,8 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
             require(rewardTokens[i] != _token, "DUPLICATE_REWARD_TOKEN");
         }
         rewardTokens.push(_token);
+
+        emit AddRewardToken(_token);
     }
 
     // Remove reward token from list
@@ -384,14 +435,7 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
         }
 
         require(succeed, "REMOVE_REWARD_TOKEN_FAIL");
-    }
 
-    function getPID(address _lpToken) public view returns (uint256) {
-        for (uint256 i = 0; i < IConvexBooster(convex).poolLength(); i++) {
-            (address lpToken_, , , , , ) = IConvexBooster(convex).poolInfo(i);
-
-            if (lpToken_ == _lpToken) return i;
-        }
-        return 0;
+        emit RemoveRewardToken(_token);
     }
 }

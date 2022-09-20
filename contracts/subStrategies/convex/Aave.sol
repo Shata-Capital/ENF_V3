@@ -62,9 +62,31 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
     // Max Deposit
     uint256 public override maxDeposit;
 
+    uint256 public constant virtualPriceMag = 1e30;
+
     event OwnerDeposit(uint256 lpAmount);
 
     event EmergencyWithdraw(uint256 amount);
+
+    event SetController(address controller);
+
+    event SetDepositSlippage(uint256 depositSlippage);
+
+    event SetWithdrawSlippage(uint256 withdrawSlippage);
+
+    event SetPoolId(uint256 pId);
+
+    event SetLPToken(address lpToken);
+
+    event SetCurvePool(address curvePool);
+
+    event SetHarvestGap(uint256 harvestGap);
+
+    event SetMaxDeposit(uint256 maxDeposit);
+
+    event AddRewardToken(address rewardToken);
+
+    event RemoveRewardToken(address rewardToken);
 
     function initialize(
         address _curvePool,
@@ -114,7 +136,8 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
     */
     function _totalAssets() internal view returns (uint256) {
         if (totalLP == 0) return 0;
-        uint256 assets = ICurvePoolAave(curvePool).calc_withdraw_one_coin(totalLP, tokenId);
+        // uint256 assets = ICurvePoolAave(curvePool).calc_withdraw_one_coin(totalLP, tokenId);
+        uint256 assets = totalLP * IPrice(lpToken).get_virtual_price() / virtualPriceMag;
         return assets;
     }
 
@@ -144,13 +167,16 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
         IERC20(usdc).approve(curvePool, _amount);
 
         // Calculate LP output expect to avoid front running
-        uint256[3] memory amounts = [0, _amount, 0];
-        uint256 expectOutput = ICurvePoolAave(curvePool).calc_token_amount(amounts, true);
+        // uint256[3] memory amounts = [0, _amount, 0];
+        // uint256 expectOutput = ICurvePoolAave(curvePool).calc_token_amount(amounts, true);
+
+        uint256 expectOutput = _amount * virtualPriceMag / IPrice(lpToken).get_virtual_price();
 
         // Calculate Minimum output considering slippage
         uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
 
         // Add liquidity to Curve pool
+        uint256[3] memory amounts = [0, _amount, 0];
         ICurvePoolAave(curvePool).add_liquidity(amounts, minOutput, true);
 
         // Get LP token amount output
@@ -191,11 +217,12 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
         uint256 lpWithdrawn = IERC20(lpToken).balanceOf(address(this));
 
         // See if LP withdrawn as requested amount
-        require(lpWithdrawn == lpAmt, "LP_WITHDRAWN_NOT_MATCH");
+        require(lpWithdrawn >= lpAmt, "LP_WITHDRAWN_NOT_MATCH");
         totalLP -= lpWithdrawn;
 
         // Calculate Minimum output
-        uint256 minAmt = ICurvePoolAave(curvePool).calc_withdraw_one_coin(lpWithdrawn, tokenId);
+        // uint256 minAmt = ICurvePoolAave(curvePool).calc_withdraw_one_coin(lpWithdrawn, tokenId);
+        uint256 minAmt = lpWithdrawn * IPrice(lpToken).get_virtual_price() / virtualPriceMag;
         minAmt = (minAmt * (magnifier - withdrawSlippage)) / magnifier;
 
         // Approve LP token to Curve
@@ -299,6 +326,8 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
     function setController(address _controller) public onlyOwner {
         require(_controller != address(0), "INVALID_LP_TOKEN");
         controller = _controller;
+
+        emit SetController(controller);
     }
 
     /**
@@ -308,6 +337,8 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
         require(_slippage < magnifier, "INVALID_SLIPPAGE");
 
         depositSlippage = _slippage;
+
+        emit SetDepositSlippage(depositSlippage);
     }
 
     /**
@@ -317,6 +348,8 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
         require(_slippage < magnifier, "INVALID_SLIPPAGE");
 
         withdrawSlippage = _slippage;
+
+        emit SetWithdrawSlippage(withdrawSlippage);
     }
 
     /**
@@ -325,6 +358,8 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
     function setPoolId(uint256 _pId) public onlyOwner {
         require(_pId < IConvexBooster(convex).poolLength(), "INVALID_POOL_ID");
         pId = _pId;
+
+        emit SetPoolId(pId);
     }
 
     /**
@@ -333,6 +368,8 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
     function setLPToken(address _lpToken) public onlyOwner {
         require(_lpToken != address(0), "INVALID_LP_TOKEN");
         lpToken = _lpToken;
+
+        emit SetLPToken(lpToken);
     }
 
     /**
@@ -341,6 +378,8 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
     function setCurvePool(address _curvePool) public onlyOwner {
         require(_curvePool != address(0), "INVALID_LP_TOKEN");
         curvePool = _curvePool;
+
+        emit SetCurvePool(curvePool);
     }
 
     /**
@@ -349,6 +388,8 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
     function setHarvestGap(uint256 _harvestGap) public onlyOwner {
         require(_harvestGap > 0, "INVALID_HARVEST_GAP");
         harvestGap = _harvestGap;
+
+        emit SetHarvestGap(harvestGap);
     }
 
     /**
@@ -367,6 +408,8 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
             require(rewardTokens[i] != _token, "DUPLICATE_REWARD_TOKEN");
         }
         rewardTokens.push(_token);
+
+        emit AddRewardToken(_token);
     }
 
     // Remove reward token from list
@@ -386,5 +429,7 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
         }
 
         require(succeed, "REMOVE_REWARD_TOKEN_FAIL");
+
+        emit RemoveRewardToken(_token);
     }
 }
