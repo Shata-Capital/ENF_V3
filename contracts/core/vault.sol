@@ -32,9 +32,9 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
 
     bool public paused;
 
-    event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
+    event Deposit(address indexed asset, address indexed caller, address indexed owner, uint256 assets, uint256 shares);
 
-    event Withdraw(address indexed caller, address indexed owner, uint256 assets, uint256 shares, uint256 fee);
+    event Withdraw(address indexed asset, address indexed caller, address indexed owner, uint256 assets, uint256 shares, uint256 fee);
 
     event SetMaxDeposit(uint256 maxDeposit);
 
@@ -85,7 +85,7 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
         // Mint ENF token to receiver
         _mint(receiver, shares);
 
-        emit Deposit(msg.sender, receiver, assets, shares);
+        emit Deposit(address(asset), msg.sender, receiver, assets, shares);
     }
 
     function getBalance(address account) internal view returns (uint256) {
@@ -116,7 +116,7 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
 
         _burn(msg.sender, shares);
 
-        emit Withdraw(msg.sender, receiver, assets, shares, fee);
+        emit Withdraw(address(asset), msg.sender, receiver, assets, shares, fee);
     }
 
     function totalAssets() public view virtual returns (uint256) {

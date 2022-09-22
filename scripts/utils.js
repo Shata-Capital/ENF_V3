@@ -1,29 +1,40 @@
 const { ethers, run, upgrades } = require("hardhat");
-const colors = require("colors")
+const colors = require("colors");
 
 exports.deployContract = async function (deployer, contractName, params) {
-  console.log(`Deploying ${contractName}`.green)
+  console.log(`Deploying ${contractName}`.green);
   const Contract = await ethers.getContractFactory(contractName, {
     signer: deployer,
-  })
-  const contract = await Contract.deploy(...params)
-  console.log(`${contractName} deployed at: ${contract.address}\n`)
+  });
+  const contract = await Contract.deploy(...params);
+  console.log(`${contractName} deployed at: ${contract.address}\n`);
 
-  await contract.deployed()
+  await contract.deployed();
 
-  return contract
-}
+  return contract;
+};
 
 exports.deployUpgradeable = async function (deployer, contractName, params) {
-  console.log(`Deploying ${contractName}`.green)
+  console.log(`Deploying ${contractName}`.green);
   const Contract = await ethers.getContractFactory(contractName, {
     signer: deployer,
-  })
-  const contract = await upgrades.deployProxy(Contract, params)
-  console.log(`${contractName} deployed at: ${contract.address}\n`)
+  });
+  const contract = await upgrades.deployProxy(Contract, params);
+  console.log(`${contractName} deployed at: ${contract.address}\n`);
 
-  return contract
-}
+  return contract;
+};
+
+exports.upgardeContract = async function (deployer, address, contractName) {
+  const Contract = await ethers.getContractFactory(contractName, {
+    signer: deployer,
+  });
+
+  console.log(`Upgrading ${contractName}...`.yellow);
+
+  await upgrades.upgradeProxy(address, Contract);
+  console.log(`${contractName} upgraded`.green);
+};
 
 exports.verifyContract = async function (contract, params) {
   try {
@@ -57,4 +68,4 @@ exports.verifyUpgradeable = async function (address) {
       console.error(error);
     }
   }
-}
+};

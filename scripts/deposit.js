@@ -2,7 +2,7 @@ const { ethers } = require("hardhat");
 const { utils } = require("ethers");
 
 const { usdcContract, depositApproverContract } = require("../test/externalContracts");
-const depositApprover = "0x325c8Df4CFb5B068675AFF8f62aA668D1dEc3C4B";
+const depositApprover = "0xaB837301d12cDc4b97f1E910FC56C9179894d9cf";
 
 function toEth(num) {
   return utils.formatEther(num);
@@ -31,14 +31,6 @@ async function main() {
 
   // Deposit
   await depositApproverContract(deployer, depositApprover).deposit(fromUSDC(100));
-
-  // Read Total Assets
-  const total = await vault.totalAssets();
-  console.log(`\tTotal USDC Balance: ${toUSDC(total)}`);
-
-  // Read ENF token Mint
-  const enf = await vault.balanceOf(deployer.address);
-  console.log(`\tAlice ENF Balance: ${toEth(enf)}`);
 }
 
 main();

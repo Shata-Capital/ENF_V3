@@ -225,17 +225,19 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
         
         uint256 toWithdraw = _amount;
         for (uint256 i = 0; i < subStrategies.length; i++) {
-            uint256 withdrawFromSS = ISubStrategy(subStrategies[apySort[i]].subStrategy).withdrawable(_amount);
-                withdrawAmt += withdrawFromSS;
+            uint256 withdrawFromSS = ISubStrategy(subStrategies[apySort[i]].subStrategy).withdrawable(toWithdraw);
+
             if (withdrawFromSS == 0) {
                 // If there is no to withdraw, skip this SS.
                 continue;
             } else if (withdrawFromSS >= toWithdraw) {
                 // If the SS can withdraw requested amt, then withdraw all and finish
+                withdrawAmt += toWithdraw;
                 toWithdraw = 0;
             } else {
                 // Withdraw max withdrawble amt and
                 toWithdraw -= withdrawFromSS;
+                withdrawAmt += withdrawFromSS;
             }
 
             // If towithdraw equals to zero, break
