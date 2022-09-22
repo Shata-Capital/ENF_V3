@@ -6,5 +6,5 @@ interface IController {
 
     function deposit(uint256 _amount) external returns (uint256);
 
-    function withdraw(uint256 _amount, address _receiver) external returns (uint256);
+    function withdraw(uint256 _amount, address _receiver) external returns (uint256, uint256);
 }

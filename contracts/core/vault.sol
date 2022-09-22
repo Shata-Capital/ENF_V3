@@ -34,7 +34,7 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
 
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
 
-    event Withdraw(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
+    event Withdraw(address indexed caller, address indexed owner, uint256 assets, uint256 shares, uint256 fee);
 
     event SetMaxDeposit(uint256 maxDeposit);
 
@@ -104,9 +104,9 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
         require(assets <= totalDeposit, "EXCEED_TOTAL_DEPOSIT");
 
         // Calls Withdraw function on controller
-        uint256 withdrawn = IController(controller).withdraw(assets, receiver);
+        (uint256 withdrawn, uint256 fee) = IController(controller).withdraw(assets, receiver);
 
-        require(withdrawn > 0, "INVALID_WITHDRAWN_SHARES");
+        require(withdrawn > 0, "INVALID_WITHDRAWN_SHARES"); 
 
         // Calculate share amount to be burnt
         shares = (totalSupply() * assets) / totalAssets();
@@ -116,7 +116,7 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
 
         _burn(msg.sender, shares);
 
-        emit Withdraw(msg.sender, receiver, assets, shares);
+        emit Withdraw(msg.sender, receiver, assets, shares, fee);
     }
 
     function totalAssets() public view virtual returns (uint256) {

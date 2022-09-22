@@ -167,16 +167,17 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
         IERC20(usdc).approve(curvePool, _amount);
 
         // Calculate LP output expect to avoid front running
-        // uint256[3] memory amounts = [0, _amount, 0];
-        // uint256 expectOutput = ICurvePoolAave(curvePool).calc_token_amount(amounts, true);
+        uint256[3] memory amounts = [0, _amount, 0];
+        uint256 expectOutput = ICurvePoolAave(curvePool).calc_token_amount(amounts, true);
 
-        uint256 expectOutput = _amount * virtualPriceMag / IPrice(lpToken).get_virtual_price();
+        // AAVE LP does not support virtual price
+        // uint256 expectOutput = _amount * virtualPriceMag / IPrice(lpToken).get_virtual_price();
 
         // Calculate Minimum output considering slippage
         uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
 
         // Add liquidity to Curve pool
-        uint256[3] memory amounts = [0, _amount, 0];
+        // uint256[3] memory amounts = [0, _amount, 0];
         ICurvePoolAave(curvePool).add_liquidity(amounts, minOutput, true);
 
         // Get LP token amount output

@@ -124,7 +124,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
 
         uint256 depositAmt = _deposit(_amount);
         return depositAmt;
-    }
+    } 
 
     /**
         _deposit is internal function for deposit action, if default option is set, deposit all requested amount to default sub strategy.
@@ -174,30 +174,30 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
         Withdraw requested amount of asset and send to receiver as well as send to treasury
         if default pool has enough asset, withdraw from it. unless loop through SS in the sequence of APY, and try to withdraw
      */
-    function withdraw(uint256 _amount, address _receiver) external override onlyVault returns (uint256 withdrawAmt) {
+    function withdraw(uint256 _amount, address _receiver) external override onlyVault returns (uint256 withdrawAmt, uint256 fee) {
         // Check input amount
         require(_amount > 0, "ZERO AMOUNT");
 
-        // Check substrategy length
+        // Check substrategy length 
         require(subStrategies.length > 0, "INVALID_POOL_LENGTH");
 
         // Todo: withdraw as much as possible
         uint256 toWithdraw = _amount;
 
         for (uint256 i = 0; i < subStrategies.length; i++) {
-            uint256 withdrawable = ISubStrategy(subStrategies[apySort[i]].subStrategy).withdrawable(_amount);
-            if (withdrawable == 0) {
+            uint256 withdrawFromSS = ISubStrategy(subStrategies[apySort[i]].subStrategy).withdrawable(_amount);
+            if (withdrawFromSS == 0) {
                 // If there is no to withdraw, skip this SS.
                 continue;
-            } else if (withdrawable >= toWithdraw) {
+            } else if (withdrawFromSS >= toWithdraw) {
                 // If the SS can withdraw requested amt, then withdraw all and finish
                 withdrawAmt += ISubStrategy(subStrategies[apySort[i]].subStrategy).withdraw(toWithdraw);
                 toWithdraw = 0;
             } else {
                 // Withdraw max withdrawble amt and
-                withdrawAmt += ISubStrategy(subStrategies[apySort[i]].subStrategy).withdraw(withdrawable);
-                // Todo deduct by withdrawAmt or withdrawable
-                toWithdraw -= withdrawable;
+                withdrawAmt += ISubStrategy(subStrategies[apySort[i]].subStrategy).withdraw(withdrawFromSS);
+                // Todo deduct by withdrawAmt or withdrawFromSS
+                toWithdraw -= withdrawFromSS;
             }
 
             // If towithdraw equals to zero, break
@@ -208,12 +208,38 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
             require(asset.balanceOf(address(this)) >= withdrawAmt, "INVALID_WITHDRAWN_AMOUNT");
 
             // Pay Withdraw Fee to treasury and send rest to user
-            uint256 fee = (withdrawAmt * withdrawFee) / magnifier;
+            fee = (withdrawAmt * withdrawFee) / magnifier;
             TransferHelper.safeTransfer(address(asset), treasury, fee);
 
             // Transfer withdrawn token to receiver
             uint256 toReceive = withdrawAmt - fee;
             TransferHelper.safeTransfer(address(asset), _receiver, toReceive);
+        }
+    }
+
+    /**
+        Withdrawable amount check
+     */
+    function withdrawable(uint256 _amount) public view returns (uint256 withdrawAmt) {
+        if (_amount == 0 || subStrategies.length == 0) return 0;
+        
+        uint256 toWithdraw = _amount;
+        for (uint256 i = 0; i < subStrategies.length; i++) {
+            uint256 withdrawFromSS = ISubStrategy(subStrategies[apySort[i]].subStrategy).withdrawable(_amount);
+                withdrawAmt += withdrawFromSS;
+            if (withdrawFromSS == 0) {
+                // If there is no to withdraw, skip this SS.
+                continue;
+            } else if (withdrawFromSS >= toWithdraw) {
+                // If the SS can withdraw requested amt, then withdraw all and finish
+                toWithdraw = 0;
+            } else {
+                // Withdraw max withdrawble amt and
+                toWithdraw -= withdrawFromSS;
+            }
+
+            // If towithdraw equals to zero, break
+            if (toWithdraw == 0) break;
         }
     }
 
@@ -300,11 +326,11 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
         address from = subStrategies[_fromId].subStrategy;
         address to = subStrategies[_toId].subStrategy;
 
-        uint256 withdrawable = ISubStrategy(from).withdrawable(_amount);
+        uint256 withdrawFromSS = ISubStrategy(from).withdrawable(_amount);
 
-        require(withdrawable > 0, "NOT_WITHDRAWABLE_AMOUNT_FROM");
+        require(withdrawFromSS > 0, "NOT_WITHDRAWABLE_AMOUNT_FROM");
 
-        uint256 withdrawAmt = ISubStrategy(from).withdraw(withdrawable);
+        uint256 withdrawAmt = ISubStrategy(from).withdraw(withdrawFromSS);
 
         // Transfer asset to substrategy
         TransferHelper.safeTransfer(address(asset), to, withdrawAmt);
