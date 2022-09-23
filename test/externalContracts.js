@@ -16,6 +16,7 @@ const notionAbi = require("../abi/notionBatch.json");
 const uniswapV2RouterAbi = require("../abi/uniswapV2Router.json");
 const uniswapV2FactoryAbi = require("../abi/uniswapV2Factory.json");
 const { abi: depositApproverAbi } = require("../artifacts/contracts/core/DepositApprover.sol/DepositApprover.json");
+const { abi: vaultAbi } = require("../artifacts/contracts/core/Vault.sol/EFVault.json");
 
 exports.usdcContract = (deployer) => {
   return new ethers.Contract(usdc, usdcAbi, deployer);
@@ -47,4 +48,8 @@ exports.notionBatchContract = (deployer) => {
 
 exports.depositApproverContract = (deployer, address) => {
   return new ethers.Contract(address, depositApproverAbi, deployer);
+};
+
+exports.vaultContract = (deployer, address) => {
+  return new ethers.Contract(address, vaultAbi, deployer);
 };

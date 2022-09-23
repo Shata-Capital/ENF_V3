@@ -60,7 +60,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     // Treasury Address
     address public treasury;
 
-    event Harvest(uint256 assets, uint256 harvestAt);
+    event Harvest(uint256 prevTotal, uint256 assets, uint256 harvestAt);
 
     event MoveFund(address from, address to, uint256 withdrawnAmount, uint256 depositAmount, uint256 movedAt);
 
@@ -257,6 +257,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
         // Check the length of indexes and routers are the same
         require(_indexes.length == _routers.length, "NOT_MATCHING_INDEX_ROUTER");
 
+        uint256 prevTotal = _totalAssets();
         // Loop Through harvest group
         for (uint256 i = 0; i < _ssIds.length; i++) {
             address subStrategy = subStrategies[_ssIds[i]].subStrategy;
@@ -307,7 +308,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
 
         _deposit((assetsHarvested));
 
-        emit Harvest(assetsHarvested, block.timestamp);
+        emit Harvest(prevTotal, assetsHarvested, block.timestamp);
 
         return assetsHarvested;
     }
@@ -347,6 +348,10 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
         Query for total assets deposited in all sub strategies
      */
     function totalAssets() external view override returns (uint256) {
+        return _totalAssets();
+    }
+
+    function _totalAssets() internal view returns (uint256) {
         uint256 total;
 
         for (uint256 i = 0; i < subStrategies.length; i++) {
