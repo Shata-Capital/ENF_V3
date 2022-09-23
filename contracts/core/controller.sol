@@ -60,7 +60,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     // Treasury Address
     address public treasury;
 
-    event Harvest(uint256 prevTotal, uint256 assets, uint256 harvestAt);
+    event Harvest(address asset, uint256 prevTotal, uint256 assets, uint256 harvestAt);
 
     event MoveFund(address from, address to, uint256 withdrawnAmount, uint256 depositAmount, uint256 movedAt);
 
@@ -308,7 +308,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
 
         _deposit((assetsHarvested));
 
-        emit Harvest(prevTotal, assetsHarvested, block.timestamp);
+        emit Harvest(address(asset), prevTotal, assetsHarvested, block.timestamp);
 
         return assetsHarvested;
     }
