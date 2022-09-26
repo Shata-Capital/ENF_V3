@@ -103,13 +103,13 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
 
         require(assets <= totalDeposit, "EXCEED_TOTAL_DEPOSIT");
 
+        // Calculate share amount to be burnt
+        shares = (totalSupply() * assets) / totalAssets();
+
         // Calls Withdraw function on controller
         (uint256 withdrawn, uint256 fee) = IController(controller).withdraw(assets, receiver);
 
         require(withdrawn > 0, "INVALID_WITHDRAWN_SHARES"); 
-
-        // Calculate share amount to be burnt
-        shares = (totalSupply() * assets) / totalAssets();
 
         // Shares could exceed balance of caller
         if (balanceOf(msg.sender) < shares) shares = balanceOf(msg.sender);

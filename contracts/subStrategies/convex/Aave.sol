@@ -128,7 +128,7 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
     }
 
     function getVirtualPrice() public view returns (uint256) {
-        return IPrice(lpToken).get_virtual_price();
+        return IPrice(curvePool).get_virtual_price();
     }
 
     /**
@@ -137,7 +137,7 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
     function _totalAssets() internal view returns (uint256) {
         if (totalLP == 0) return 0;
         // uint256 assets = ICurvePoolAave(curvePool).calc_withdraw_one_coin(totalLP, tokenId);
-        uint256 assets = totalLP * IPrice(lpToken).get_virtual_price() / virtualPriceMag;
+        uint256 assets = totalLP * IPrice(curvePool).get_virtual_price() / virtualPriceMag;
         return assets;
     }
 
@@ -167,17 +167,17 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
         IERC20(usdc).approve(curvePool, _amount);
 
         // Calculate LP output expect to avoid front running
-        uint256[3] memory amounts = [0, _amount, 0];
-        uint256 expectOutput = ICurvePoolAave(curvePool).calc_token_amount(amounts, true);
+        // uint256[3] memory amounts = [0, _amount, 0];
+        // uint256 expectOutput = ICurvePoolAave(curvePool).calc_token_amount(amounts, true);
 
         // AAVE LP does not support virtual price
-        // uint256 expectOutput = _amount * virtualPriceMag / IPrice(lpToken).get_virtual_price();
+        uint256 expectOutput = _amount * virtualPriceMag / IPrice(curvePool).get_virtual_price();
 
         // Calculate Minimum output considering slippage
         uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
 
         // Add liquidity to Curve pool
-        // uint256[3] memory amounts = [0, _amount, 0];
+        uint256[3] memory amounts = [0, _amount, 0];
         ICurvePoolAave(curvePool).add_liquidity(amounts, minOutput, true);
 
         // Get LP token amount output
@@ -223,7 +223,7 @@ contract Aave is OwnableUpgradeable, ISubStrategy {
 
         // Calculate Minimum output
         // uint256 minAmt = ICurvePoolAave(curvePool).calc_withdraw_one_coin(lpWithdrawn, tokenId);
-        uint256 minAmt = lpWithdrawn * IPrice(lpToken).get_virtual_price() / virtualPriceMag;
+        uint256 minAmt = lpWithdrawn * IPrice(curvePool).get_virtual_price() / virtualPriceMag;
         minAmt = (minAmt * (magnifier - withdrawSlippage)) / magnifier;
 
         // Approve LP token to Curve

@@ -168,14 +168,18 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
         IERC20(usdc).approve(curvePool, _amount);
 
         // Calculate LP output expect to avoid front running
-        uint256[3] memory amounts = [0, _amount, 0];
         // uint256 expectOutput = ICurvePoolTri(curvePool).calc_token_amount(amounts, true);
 
         // Calculate Minimum output considering slippage
         // uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
+        uint256 expectOutput = _amount * virtualPriceMag / IPrice(curvePool).get_virtual_price();
+
+        // Calculate Minimum output considering slippage
+        uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
 
         // Add liquidity to Curve pool
-        ICurvePoolTri(curvePool).add_liquidity(amounts, 0);
+        uint256[3] memory amounts = [0, _amount, 0];
+        ICurvePoolTri(curvePool).add_liquidity(amounts, minOutput);
 
         // Get LP token amount output
         uint256 lpAmt = IERC20(lpToken).balanceOf(address(this));
@@ -220,7 +224,7 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
 
         // Calculate Minimum output
         // uint256 minAmt = ICurvePoolTri(curvePool).calc_withdraw_one_coin(lpWithdrawn, tokenId);
-        uint256 minAmt = lpWithdrawn * IPrice(lpToken).get_virtual_price() / virtualPriceMag;
+        uint256 minAmt = lpWithdrawn * IPrice(curvePool).get_virtual_price() / virtualPriceMag;
         minAmt = (minAmt * (magnifier - withdrawSlippage)) / magnifier;
 
         // Approve LP token to Curve
