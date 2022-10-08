@@ -1,7 +1,7 @@
 {
-  "name": "Crosswise-Dex-V2-Baseline",
-  "version": "1.0.0",
-  "description": "Dex Contracts for Crosswise",
+  "name": "earning_farm",
+  "version": "3.0.0",
+  "description": "vault contract for earning farm",
   "directories": {
     "test": "test"
   },
@@ -64,8 +64,9 @@
     "typechain": "TS_NODE_TRANSPILE_ONLY=true hardhat typechain",
     "fork": "hardhat node",
     "deploy": "hardhat run scripts/deploy.js --network localnet",
-    "deploy:mainnet": "hardhat --network bsc_mainnet run scripts/deploy.js",
+    "deploy:mainnet": "hardhat --network mainnet run scripts/deploy.js",
     "deploy:testnet": "hardhat --network ropsten run scripts/deploy.js",
+    "deploy:ftmtestnet": "hardhat --network fantom_testnet run scripts/deploy.js",
     "deploy:localnet": "hardhat --network localnet run scripts/deploy.js"
   }
 }

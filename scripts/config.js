@@ -1,1 +1,1 @@
-exports.treasury = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"  // Treasury address for fee collecting
+exports.treasury = "0x39F4Ef6294512015AB54ed3ab32BAA1794E8dE70"; // Treasury address for fee collecting

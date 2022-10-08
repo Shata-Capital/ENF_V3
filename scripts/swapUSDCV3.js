@@ -1,9 +1,14 @@
 const { ethers } = require("hardhat");
 const { utils } = require("ethers");
 
-const { usdcContract, depositApproverContract } = require("../test/externalContracts");
-const address = require("./address.json");
-const depositApprover = address["DepositApprover address"];
+const {
+  usdcContract,
+  uniV2RouterContract,
+  uniV2FactoryContract,
+  alusdContract,
+  uniV3Contract,
+} = require("../test/externalContracts");
+const constants = require("../constants/constants");
 
 function toEth(num) {
   return utils.formatEther(num);
@@ -21,17 +26,20 @@ function fromUSDC(num) {
   return utils.parseUnits(num.toString(), 6);
 }
 
+async function swapUSDC(caller) {
+  await uniV3Contract(caller).exactInputSingle(
+    [constants.weth, constants.usdc, 3000, caller.address, fromEth(1), 0, 0],
+    { value: fromEth(1) }
+  );
+}
+
 async function main() {
   const [deployer] = await ethers.getSigners();
 
   const curUSDC = await usdcContract(deployer).balanceOf(deployer.address);
   console.log(`\tUSDC of Alice: ${toUSDC(curUSDC)}`);
 
-  // Approve to deposit approver
-  await usdcContract(deployer).approve(depositApprover, fromUSDC(1000));
-
-  // Deposit
-  await depositApproverContract(deployer, depositApprover).deposit(fromUSDC(1000));
+  await swapUSDC(deployer);
 }
 
 main();

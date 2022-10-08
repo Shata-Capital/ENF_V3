@@ -64,6 +64,7 @@ const config: HardhatUserConfig = {
       blockGasLimit: 800000
     },
     ropsten: getChainConfig("ropsten"),
+    mainnet: getChainConfig("mainnet"),
     bsc_mainnet: {
       url: "https://bsc-dataseed.binance.org/",
       chainId: 56,
@@ -80,7 +81,7 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
     fantom_testnet: {
-      url: "https://rpc.testnet.fantom.network",
+      url: "https://fantom-testnet.public.blastapi.io",
       chainId: 4002,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },

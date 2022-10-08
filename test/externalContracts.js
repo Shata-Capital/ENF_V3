@@ -6,6 +6,7 @@ const {
   uniSwapV2Factory,
   alusdLP,
   notionBatch,
+  uniSwapV3Router,
 } = require("../constants/constants");
 
 const usdcAbi = require("../abi/usdc.json");
@@ -14,9 +15,14 @@ const crvETHAbi = require("../abi/crvETHPool.json");
 const alusdAbi = require("../abi/alusd.json");
 const notionAbi = require("../abi/notionBatch.json");
 const uniswapV2RouterAbi = require("../abi/uniswapV2Router.json");
+const uniswapV3RouterAbi = require("../abi/uniswapV3Router.json");
 const uniswapV2FactoryAbi = require("../abi/uniswapV2Factory.json");
 const { abi: depositApproverAbi } = require("../artifacts/contracts/core/DepositApprover.sol/DepositApprover.json");
 const { abi: vaultAbi } = require("../artifacts/contracts/core/Vault.sol/EFVault.json");
+const { abi: controllerAbi } = require("../artifacts/contracts/core/Controller.sol/Controller.json");
+const { abi: curveAbi } = require("../artifacts/contracts/exchanges/Curve.sol/Curve.json");
+const { abi: uniV2Abi } = require("../artifacts/contracts/exchanges/UniswapV2.sol/UniswapV2.json");
+const { ethers } = require("hardhat");
 
 exports.usdcContract = (deployer) => {
   return new ethers.Contract(usdc, usdcAbi, deployer);
@@ -50,6 +56,22 @@ exports.depositApproverContract = (deployer, address) => {
   return new ethers.Contract(address, depositApproverAbi, deployer);
 };
 
+exports.controllerContract = (deployer, address) => {
+  return new ethers.Contract(address, controllerAbi, deployer);
+};
+
 exports.vaultContract = (deployer, address) => {
   return new ethers.Contract(address, vaultAbi, deployer);
+};
+
+exports.curveExchange = (deployer, address) => {
+  return new ethers.Contract(address, curveAbi, deployer);
+};
+
+exports.uniV2Exchange = (deployer, address) => {
+  return new ethers.Contract(address, uniV2Abi, deployer);
+};
+
+exports.uniV3Contract = (deployer) => {
+  return new ethers.Contract(uniSwapV3Router, uniswapV3RouterAbi, deployer);
 };
