@@ -3,28 +3,37 @@ const { expect, util } = require("chai");
 const colors = require("colors");
 const { utils } = require("ethers");
 
-const { usdcContract, uniV2RouterContract, uniV2FactoryContract } = require("../test/externalContracts");
+const { usdcContract, uniV2RouterContract, uniV2FactoryContract, alusdContract } = require("./externalContracts");
 
 const {
   usdc,
   weth,
-  notionalProxy,
-  note,
-  nusdc,
-  usdcCurrencyId,
+  convexBooster,
+  alusdPid,
+  alusdLP,
+  curveAlusd,
+  crv,
+  dai,
   uniSwapV2Router,
   uniSwapV3Router,
-  ethUsdcPath,
+  curveCRVETH,
   balancerV2Vault,
   balancerETHToUSDCSwap,
   balancerNoteToETHSwap,
   balancerNoteToUSDCAssets,
   balancerNoteToUSDCPools,
-  balancerNoteToETHPools,
-  balancerNoteToETHAssets,
+  crvUsdcPath,
+  crvEthPath,
+  ethUsdcPath,
+  curveUSDCDAI,
+  nDai,
+  daiCurrencyId,
+  note,
+  notionalProxy,
+  curveDAIUSDC,
 } = require("../constants/constants");
 
-let vault, controller, depositApprover, exchange, cusdc, uniV2, uniV3, balancer, balancerBatch, curve;
+let vault, controller, cDai, depositApprover, exchange, uniV2, curve;
 
 function toEth(num) {
   return utils.formatEther(num);
@@ -43,9 +52,13 @@ function fromUSDC(num) {
 }
 
 async function swapUSDC(caller) {
-  await uniV2RouterContract(caller).swapExactETHForTokens(0, [weth, usdc], caller.address, 100000000000, {
-    value: fromEth(1),
-  });
+  await uniV2RouterContract(caller).swapExactETHForTokensSupportingFeeOnTransferTokens(
+    0,
+    [weth, usdc],
+    caller.address,
+    100000000000,
+    { value: fromEth(1) }
+  );
 }
 
 describe("ENF Vault test", async () => {
@@ -70,16 +83,25 @@ describe("ENF Vault test", async () => {
     controller = await upgrades.deployProxy(Controller, [vault.address, usdc, treasury.address, weth]);
     console.log(`Controller deployed at: ${controller.address}\n`);
 
-    // Deploy Notional
-    console.log("Deploying Notional CUSDC".green);
-    const CUSDC = await ethers.getContractFactory("Cusdc");
-    cusdc = await upgrades.deployProxy(CUSDC, [usdc, controller.address, notionalProxy, note, nusdc, usdcCurrencyId]);
-    console.log("CUSDC deployed: ", cusdc.address);
-
     // Deploy Exchange
     console.log("Deploying Exchange".green);
     const Exchange = await ethers.getContractFactory("Exchange");
-    exchange = await Exchange.deploy(weth, controller.address);
+    exchange = await upgrades.deployProxy(Exchange, [weth, controller.address]);
+
+    // Deploy Alusd
+    console.log("Deploying ALUSD".green);
+    const CDai = await ethers.getContractFactory("CDai");
+    cDai = await upgrades.deployProxy(CDai, [
+      usdc,
+      dai,
+      controller.address,
+      notionalProxy,
+      note,
+      nDai,
+      daiCurrencyId,
+      exchange.address,
+    ]);
+    console.log(`CDai deployed at: ${cDai.address}\n`);
 
     // Deploy routers
     console.log("\nDeploying Uni V2 Router".green);
@@ -87,21 +109,15 @@ describe("ENF Vault test", async () => {
     uniV2 = await UniV2.deploy(weth, exchange.address);
     console.log("Uni V2 is deployed: ", uniV2.address);
 
-    console.log("\nDeploying Uni V3 Router".green);
-    const UniV3 = await ethers.getContractFactory("UniswapV3");
-    uniV3 = await UniV3.deploy(uniSwapV3Router, exchange.address);
-    console.log("Uni V3 is deployed: ", uniV3.address);
-
     console.log("\nDeploying Balancer".green);
     const Balancer = await ethers.getContractFactory("BalancerV2");
     balancer = await Balancer.deploy(balancerV2Vault, exchange.address, weth);
     console.log("Balancer V2 is Deployed: ", balancer.address);
 
-    console.log("\nDeploying Balancer BatchSwap".green);
-    const BalancerBatch = await ethers.getContractFactory("BalancerBatchV2");
-    balancerBatch = await BalancerBatch.deploy(balancerV2Vault, exchange.address, weth);
-    console.log("Balancer Batch V2 is Deployed: ", balancerBatch.address);
-
+    console.log("\nDeploying Curve".green);
+    const Curve = await ethers.getContractFactory("Curve");
+    curve = await Curve.deploy(weth, exchange.address);
+    console.log("Curve is deployed: ", curve.address);
     /**
      * Wiring Contracts with each other
      */
@@ -125,27 +141,50 @@ describe("ENF Vault test", async () => {
      * Set configuration
      */
 
-    // Set DepositSlippage on CUSDC
-    await cusdc.setDepositSlippage(100);
+    // Set DepositSlippage on ALUSD
+    await cDai.setDepositSlippage(100);
     console.log("Deposit slippage set");
 
-    // Set WithdrawSlippage on CUSDC
-    await cusdc.setWithdrawSlippage(100);
+    // Set WithdrawSlippage on ALUSD
+    await cDai.setWithdrawSlippage(100);
     console.log("Withdraw slippage set");
+
+    await exchange.setSwapCaller(cDai.address, true);
+
+    // Set CRV-USDC to exchange
+    await uniV2.addPath(uniSwapV2Router, crvUsdcPath);
+
+    // Set CRV-USDC to exchange
+    await uniV2.addPath(uniSwapV2Router, crvEthPath);
 
     // Set CRV-USDC to exchange
     await uniV2.addPath(uniSwapV2Router, ethUsdcPath);
 
+    // Set CRV-USDC to CURVE
+    await curve.addCurvePool(...curveCRVETH);
+    await curve.addCurvePool(...curveUSDCDAI);
+    await curve.addCurvePool(...curveDAIUSDC);
+
+    console.log("\nDeploying Balancer BatchSwap".green);
+    const BalancerBatch = await ethers.getContractFactory("BalancerBatchV2");
+    balancerBatch = await BalancerBatch.deploy(balancerV2Vault, exchange.address, weth);
+    console.log("Balancer Batch V2 is Deployed: ", balancerBatch.address);
+
     // Set swaps on Balancer Batch
     await balancerBatch.addPath(balancerNoteToUSDCPools, balancerNoteToUSDCAssets);
-
-    // Set swaps on Balancer
-    await balancer.addPath(balancerNoteToETHSwap);
-    await balancer.addPath(balancerETHToUSDCSwap);
-
     // Get CRV-USDC path index
-    const index = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath);
-    console.log(`\tNOTE-USDC Path index: ${index}\n`);
+    const index = await uniV2.getPathIndex(uniSwapV2Router, crvUsdcPath);
+    console.log(`\tCRV-USDC Path index: ${index}\n`);
+
+    // Set Routers to exchange
+    await exchange.listRouter(uniV2.address);
+    await exchange.listRouter(curve.address);
+    await exchange.listRouter(balancerBatch.address);
+
+    const indexDai = await curve.getPathIndex(...curveUSDCDAI);
+    const indexUSDC = await curve.getPathIndex(...curveDAIUSDC);
+
+    await cDai.setSwapPath(exchange.address, curve.address, indexDai, indexUSDC);
   });
 
   it("Vault Deployed", async () => {
@@ -171,15 +210,15 @@ describe("ENF Vault test", async () => {
     console.log(`\tUSDC of Alice: ${toUSDC(newUSDC)}`);
   });
 
-  // Register Cusdc SS
-  it("Register Cusdc with non-owner will be reverted", async () => {
-    await expect(controller.connect(alice).registerSubStrategy(cusdc.address, 100)).to.revertedWith(
+  // Register Alusd SS
+  it("Register Alusd with non-owner will be reverted", async () => {
+    await expect(controller.connect(alice).registerSubStrategy(cDai.address, 100)).to.revertedWith(
       "Ownable: caller is not the owner"
     );
   });
 
-  it("Register Cusdc as 100 alloc point, check total alloc to be 100, ss length to be 1", async () => {
-    await controller.connect(deployer).registerSubStrategy(cusdc.address, 100);
+  it("Register Alusd as 100 alloc point, check total alloc to be 100, ss length to be 1", async () => {
+    await controller.connect(deployer).registerSubStrategy(cDai.address, 100);
     const totalAlloc = await controller.totalAllocPoint();
     const ssLength = await controller.subStrategyLength();
 
@@ -188,11 +227,11 @@ describe("ENF Vault test", async () => {
     expect(ssLength).to.equal(1);
   });
 
-  it("Register Cusdc will be reverted for duplication", async () => {
-    await expect(controller.connect(deployer).registerSubStrategy(cusdc.address, 100)).to.revertedWith(
-      "ALREADY_REGISTERED"
-    );
-  });
+  //   it("Register Alusd will be reverted for duplication", async () => {
+  //     await expect(controller.connect(deployer).registerSubStrategy(alusd.address, 100)).to.revertedWith(
+  //       "ALREADY_REGISTERED"
+  //     );
+  //   });
 
   ///////////////////////////////////////////////////
   //                 DEPOSIT                       //
@@ -227,8 +266,8 @@ describe("ENF Vault test", async () => {
     console.log(`\tAlice ENF Balance: ${toEth(enf)}`);
   });
 
-  it("Withdraw 10.1 USDC will be reverted", async () => {
-    await expect(vault.connect(alice).withdraw(fromUSDC(10.1), alice.address)).to.revertedWith("EXCEED_TOTAL_DEPOSIT");
+  it("Withdraw 10 USDC will be reverted", async () => {
+    await expect(vault.connect(alice).withdraw(fromUSDC(10), alice.address)).to.revertedWith("EXCEED_TOTAL_DEPOSIT");
   });
 
   it("Deposit 1000 USDC", async () => {
@@ -247,19 +286,21 @@ describe("ENF Vault test", async () => {
     console.log(`\tAlice ENF Balance: ${toEth(enf)}`);
   });
 
-  // // it("Get Pid", async () => {
-  // //     const triPID = await cusdc.getPID(triLP)
-  // //     console.log(`\tTriPool Pid: ${triPID}`)
-  // // })
+  //   // it("Get Pid", async () => {
+  //   //     const triPID = await alusd.getPID(triLP)
+  //   //     console.log(`\tTriPool Pid: ${triPID}`)
+  //   // })
 
-  ////////////////////////////////////////////////
-  //                  HARVEST                   //
-  ////////////////////////////////////////////////
+  //   ////////////////////////////////////////////////
+  //   //                  HARVEST                   //
+  //   ////////////////////////////////////////////////
 
-  it("Pass Time and block number", async () => {
-    await network.provider.send("evm_increaseTime", [3600 * 24 * 1]);
-    await network.provider.send("evm_mine");
-  });
+  //   // it("Pass Time and block number", async () => {
+  //   //     await network.provider.send("evm_increaseTime", [3600 * 24 * 60]);
+  //   //     await network.provider.send("evm_mine");
+  //   //     await network.provider.send("evm_mine");
+  //   //     await network.provider.send("evm_mine");
+  //   // })
 
   it("Harvest CUSDC", async () => {
     // Get NOTE-USDC path index
@@ -273,59 +314,53 @@ describe("ENF Vault test", async () => {
     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`);
   });
 
-  it("Pass Time and block number", async () => {
-    await network.provider.send("evm_increaseTime", [3600 * 24 * 1]);
-    await network.provider.send("evm_mine");
-  });
+  //   // it("Pass Time and block number", async () => {
+  //   //     await network.provider.send("evm_increaseTime", [3600 * 24 * 60]);
+  //   //     await network.provider.send("evm_mine");
+  //   //     await network.provider.send("evm_mine");
+  //   //     await network.provider.send("evm_mine");
+  //   // })
 
-  it("Harvest CUSDC Balancer multi-swap", async () => {
-    // Get NOTE-USDC path index
-    const index0 = await balancer.getPathIndex(balancerNoteToETHSwap);
-    const index1 = await balancer.getPathIndex(balancerETHToUSDCSwap);
-    // const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath)
-    console.log(`\tNOTE-ETH Balancer Path index: ${index0}\n`);
-    console.log(`\tETH-USDC UniV2 Path index: ${index1}\n`);
+  //   // it("Harvest ALUSD with multi-router", async () => {
+  //   //     // Get CRV-USDC path index
+  //   //     const index0 = await uniV2.getPathIndex(uniSwapV2Router, crvEthPath)
+  //   //     const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath)
+  //   //     console.log(`\tCRV-ETH Path index: ${index0}\n`)
 
-    await controller.harvest([0], [index0, index1], [balancer.address, balancer.address]);
+  //   //     await controller.harvest([0], [index0, index1], [uniV2.address, uniV2.address])
 
-    // Read Total Assets
-    const total = await vault.totalAssets();
-    console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`);
-  });
+  //   //     // Read Total Assets
+  //   //     const total = await vault.totalAssets()
+  //   //     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
+  //   // })
 
-  it("Pass Time and block number", async () => {
-    await network.provider.send("evm_increaseTime", [3600 * 24 * 1]);
-    await network.provider.send("evm_mine");
-  });
+  //   it("Harvest ALUSD with multi-router", async () => {
+  //     // Get CRV-USDC path index
+  //     const index0 = await curve.getPathIndex(...curveCRVETH);
+  //     const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath);
+  //     console.log(`\tCRV-ETH Path index: ${index0}\n`);
+  //     console.log(`\tETH-USDC Path index: ${index1}\n`);
 
-  it("Harvest CUSDC Balancer-Univ2 multi-swap", async () => {
-    // Get NOTE-USDC path index
-    const index0 = await balancer.getPathIndex(balancerNoteToETHSwap);
-    // const index1 = await balancer.getPathIndex(balancerETHToUSDCSwap)
-    const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath);
-    console.log(`\tNOTE-ETH Balancer Path index: ${index0}\n`);
-    console.log(`\tETH-USDC UniV2 Path index: ${index1}\n`);
+  //     await controller.harvest([0], [index0, index1], [curve.address, uniV2.address]);
 
-    await controller.harvest([0], [index0, index1], [balancer.address, uniV2.address]);
-
-    // Read Total Assets
-    const total = await vault.totalAssets();
-    console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`);
-  });
+  //     // Read Total Assets
+  //     const total = await vault.totalAssets();
+  //     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`);
+  //   });
 
   ////////////////////////////////////////////////
   //              EMERGENCY WITHDRAW            //
   ////////////////////////////////////////////////
   it("Emergency Withdraw by non-owner will be reverted", async () => {
-    await expect(cusdc.connect(alice).emergencyWithdraw()).to.be.revertedWith("Ownable: caller is not the owner");
+    await expect(cDai.connect(alice).emergencyWithdraw()).to.be.revertedWith("Ownable: caller is not the owner");
   });
 
   it("Emergency Withdraw", async () => {
-    await cusdc.emergencyWithdraw();
+    await cDai.emergencyWithdraw();
   });
 
   // it("Get LP withdrawn", async () => {
-  //     const lpBal = await cusdcContract(alice).balanceOf(deployer.address)
+  //     const lpBal = await cDaiContract(alice).balanceOf(deployer.address)
   //     console.log(`\tCusdc LP Withdrawn: ${toEth(lpBal)}`)
   // })
 
@@ -333,17 +368,17 @@ describe("ENF Vault test", async () => {
   //               OWNER DEPOSIT                 //
   /////////////////////////////////////////////////
   it("Owner deposit will be reverted", async () => {
-    await expect(cusdc.connect(alice).ownerDeposit(fromUSDC(100))).to.revertedWith("Ownable: caller is not the owner");
+    await expect(cDai.connect(alice).ownerDeposit(fromUSDC(100))).to.revertedWith("Ownable: caller is not the owner");
   });
 
   it("Owner Deposit", async () => {
     // Approve to deposit approver
-    await usdcContract(deployer).approve(cusdc.address, fromUSDC(1000));
+    await usdcContract(deployer).approve(cDai.address, fromUSDC(1000));
 
-    await cusdc.connect(deployer).ownerDeposit(fromUSDC(1000));
+    await cDai.connect(deployer).ownerDeposit(fromUSDC(1000));
 
     // Read Total Assets
-    const total = await cusdc.totalAssets();
+    const total = await cDai.totalAssets();
     console.log(`\n\tTotal USDC Balance: ${toUSDC(total)}`);
   });
 });

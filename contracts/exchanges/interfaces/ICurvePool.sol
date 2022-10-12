@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 interface ICurvePool {
-    function exchange_underlying(
-        uint256 i,
-        uint256 j,
+    function exchange(
+        int128 i,
+        int128 j,
         uint256 dx,
         uint256 min_dy
     ) external;
@@ -17,5 +17,12 @@ interface ICurvePoolToETH {
         uint256 dx,
         uint256 min_dy,
         bool use_eth
+    ) external;
+
+    function exchange_underlying(
+        uint256 i,
+        uint256 j,
+        uint256 dx,
+        uint256 min_dy
     ) external;
 }

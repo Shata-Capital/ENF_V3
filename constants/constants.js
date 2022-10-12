@@ -9,6 +9,8 @@ exports.alcx = "0xdbdb4d16eda451d0503b854cf79d55697f90c8df";
 exports.lqty = "0x6DEA81C8171D0bA574754EF6F8b412F2Ed88c54D";
 exports.stkAAVE = "0x4da27a545c0c5B758a6BA100e3a049001de870f5";
 exports.note = "0xCFEAead4947f0705A14ec42aC3D44129E1Ef3eD5";
+exports.cvx = "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B";
+exports.dai = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
 
 /**
  * Router Addresses
@@ -17,6 +19,8 @@ exports.uniSwapV2Router = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
 exports.uniSwapV2Factory = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
 exports.uniSwapV3Router = "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45";
 exports.balancerV2Vault = "0xBA12222222228d8Ba445958a75a0704d566BF2C8";
+exports.sushiSwapV2Router = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
+exports.sushiSwapV2Factory = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
 
 /**
  * Convex Address
@@ -67,13 +71,18 @@ exports.crvUsdcPath = [
 exports.crvEthPath = ["0xD533a949740bb3306d119CC777fa900bA034cd52", "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"];
 exports.ethUsdcPath = ["0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"];
 
+exports.alcxEthPath = ["0xdbdb4d16eda451d0503b854cf79d55697f90c8df", "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"];
+
 /**
  * Notional Info
  */
 exports.notionBatch = "0x1d1a531cbcb969040da7527bf1092dfc4ff7dd46";
 exports.notionalProxy = "0x1344a36a1b56144c3bc62e7757377d288fde0369";
 exports.nusdc = "0x18b0fc5a233acf1586da7c199ca9e3f486305a29";
-exports.currencyId = 3;
+exports.usdcCurrencyId = 3;
+
+exports.nDai = "0x6EbcE2453398af200c688C7c4eBD479171231818";
+exports.daiCurrencyId = 2;
 
 /**
  * Balancer USDC - Note
@@ -147,6 +156,34 @@ exports.curveCRVETH = [
   "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // To
   1, // i
   0, // j
+  true, // ETH_pool
 ];
 
 exports.crvETHCurvePool = "0x8301ae4fc9c624d1d396cbdaa1ed877821d7c511";
+
+exports.curveCVXETH = [
+  "0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4", // pool
+  "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+  "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+  1, // i
+  0, // j
+  true, // ETH_pool
+];
+
+exports.curveUSDCDAI = [
+  "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7", // Pool
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
+  "0x6B175474E89094C44Da98b954EedeAC495271d0F", // DAI
+  1, // i
+  0, // j
+  false, // ETH_pool
+];
+
+exports.curveDAIUSDC = [
+  "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7", // Pool
+  "0x6B175474E89094C44Da98b954EedeAC495271d0F", // DAI
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
+  0, // i
+  1, // j
+  false, // ETH_pool
+];

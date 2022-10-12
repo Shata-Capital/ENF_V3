@@ -44,7 +44,7 @@ function getChainConfig(network: keyof typeof chainIds) {
 }
 
 const config: HardhatUserConfig = {
-  defaultNetwork: "hardhat",
+  defaultNetwork: "localnet",
   gasReporter: {
     currency: "USD",
     enabled: process.env.REPORT_GAS ? true : false,

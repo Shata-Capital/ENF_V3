@@ -56,10 +56,10 @@ exports.verifyContract = async function (contract, params) {
 exports.verifyUpgradeable = async function (address) {
   try {
     // Verify
-    // const contract = await upgrades.erc1967.getImplementationAddress(address);
+    const contract = await upgrades.erc1967.getImplementationAddress(address);
     // console.log("Verifying: ", contract);
     await run("verify:verify", {
-      address: address,
+      address: contract,
     });
   } catch (error) {
     if (error && error.message.includes("Reason: Already Verified")) {

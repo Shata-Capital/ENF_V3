@@ -22,6 +22,7 @@ contract Curve is IRouter, Ownable {
         uint256 i;
         address to;
         uint256 j;
+        bool ethPool;
     }
 
     // Array for path indices
@@ -65,16 +66,17 @@ contract Curve is IRouter, Ownable {
         address _from,
         address _to,
         uint256 _i,
-        uint256 _j
+        uint256 _j,
+        bool _ethPool
     ) public onlyOwner returns (bytes32) {
         // Generate hash index for path
-        bytes32 hash = keccak256(abi.encodePacked(_pool, _from, _to, _i, _j));
+        bytes32 hash = keccak256(abi.encodePacked(_pool, _from, _to, _i, _j, _ethPool));
 
         // Duplication check
         require(pools[hash].pool == address(0), "ALREADY_EXIST_POOL");
 
         // Add new Curve pool
-        pools[hash] = CurvePool({pool: _pool, from: _from, to: _to, i: _i, j: _j});
+        pools[hash] = CurvePool({pool: _pool, from: _from, to: _to, i: _i, j: _j, ethPool: _ethPool});
 
         pathBytes.push(hash);
 
@@ -115,9 +117,10 @@ contract Curve is IRouter, Ownable {
         address _from,
         address _to,
         uint256 _i,
-        uint256 _j
+        uint256 _j,
+        bool _ethPool
     ) public view returns (bytes32) {
-        bytes32 hash = keccak256(abi.encodePacked(_pool, _from, _to, _i, _j));
+        bytes32 hash = keccak256(abi.encodePacked(_pool, _from, _to, _i, _j, _ethPool));
 
         if (pools[hash].pool == address(0)) return 0;
         else return hash;
@@ -160,8 +163,12 @@ contract Curve is IRouter, Ownable {
         IERC20(_from).approve(curve.pool, 0);
         IERC20(_from).approve(curve.pool, _amount);
 
-        if (_to == weth) ICurvePoolToETH(curve.pool).exchange(curve.i, curve.j, _amount, 0, true);
-        else ICurvePool(curve.pool).exchange_underlying(curve.i, curve.j, _amount, 0);
+        if (curve.ethPool) {
+            if (_to == weth) ICurvePoolToETH(curve.pool).exchange(curve.i, curve.j, _amount, 0, true);
+            else ICurvePoolToETH(curve.pool).exchange_underlying(curve.i, curve.j, _amount, 0);
+        } else {
+            ICurvePool(curve.pool).exchange(int128(uint128(curve.i)), int128(uint128(curve.j)), _amount, 0);
+        }
 
         uint256 out = getBalance(_to, address(this));
         console.log("Out: ", out);

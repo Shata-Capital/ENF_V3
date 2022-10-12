@@ -2,20 +2,20 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "../interfaces/IExchange.sol";
 import "../interfaces/IRouter.sol";
 import "../utils/TransferHelper.sol";
 
-contract Exchange is IExchange, Ownable {
+contract Exchange is IExchange, OwnableUpgradeable {
     using SafeMath for uint256;
 
     string public constant version = "3.0";
 
-    address public controller;
-
     mapping(address => bool) public routerListed;
+
+    mapping(address => bool) public swapCaller;
 
     address public weth;
 
@@ -23,19 +23,30 @@ contract Exchange is IExchange, Ownable {
 
     event RouterDelisted(address router);
 
-    constructor(address _weth, address _controller) {
-        controller = _controller;
+    event SetSwapCaller(address caller, bool status);
+
+    function initialize(address _weth, address _controller) public initializer {
+        __Ownable_init();
+        swapCaller[_controller] = true;
         weth = _weth;
     }
 
     receive() external payable {}
 
     /**
-        Only controller can call
+        Only registered callner can call
      */
-    modifier onlyController() {
-        require(controller == _msgSender(), "ONLY_CONTROLLER");
+    modifier onlyCaller() {
+        require(swapCaller[_msgSender()], "ONLY_SWAP_CALLER");
         _;
+    }
+
+    function setSwapCaller(address _caller, bool _status) public onlyOwner {
+        require(_caller != address(0), "INVALID_ADDRESS");
+
+        swapCaller[_caller] = _status;
+
+        emit SetSwapCaller(_caller, _status);
     }
 
     /**
@@ -47,12 +58,12 @@ contract Exchange is IExchange, Ownable {
         address _router,
         bytes32 _index,
         uint256 _amount
-    ) external override onlyController returns (uint256) {
+    ) external override onlyCaller returns (uint256) {
         // Only Listed router can be used
         require(routerListed[_router], "ONLY_LISTED_ROUTER");
 
-        // Transfer token from controller
-        TransferHelper.safeTransferFrom(_from, controller, address(_router), _amount);
+        // Transfer token from caller
+        TransferHelper.safeTransferFrom(_from, _msgSender(), address(_router), _amount);
 
         // Swap token using uniswap/sushiswap
         IRouter(_router).swap(_from, _to, _index, _amount);
@@ -61,11 +72,11 @@ contract Exchange is IExchange, Ownable {
         uint256 outAmt = getBalance(_to, address(this));
 
         console.log("Ex: ", outAmt);
-        console.log("Weth: ", IERC20(weth).balanceOf(address(this)));
+        console.log("Weth: ", IERC20Upgradeable(weth).balanceOf(address(this)));
 
         // Transfer to Controller
-        if (_to == weth) TransferHelper.safeTransferETH(controller, outAmt);
-        else TransferHelper.safeTransfer(_to, controller, outAmt);
+        if (_to == weth) TransferHelper.safeTransferETH(_msgSender(), outAmt);
+        else TransferHelper.safeTransfer(_to, _msgSender(), outAmt);
 
         return outAmt;
     }
@@ -78,10 +89,10 @@ contract Exchange is IExchange, Ownable {
         address _router,
         bytes32 _index,
         uint256 _amount
-    ) external payable override onlyController returns (uint256) {
+    ) external payable override onlyCaller returns (uint256) {
         // Only Listed router can be used
         require(routerListed[_router], "ONLY_LISTED_ROUTER");
-        
+
         require(msg.value >= _amount, "INSUFFICIENT_TRANSFER");
         // Transfer ETH to router
         TransferHelper.safeTransferETH(_router, _amount);
@@ -93,15 +104,15 @@ contract Exchange is IExchange, Ownable {
         uint256 outAmt = getBalance(_to, address(this));
 
         console.log("Ex: ", outAmt);
-        // Transfer to Controller
-        TransferHelper.safeTransfer(_to, controller, outAmt);
+        // Transfer to caller
+        TransferHelper.safeTransfer(_to, _msgSender(), outAmt);
 
         return outAmt;
     }
 
     function getBalance(address asset, address account) internal view returns (uint256) {
         if (address(asset) == address(weth)) return address(account).balance;
-        else return IERC20(asset).balanceOf(account);
+        else return IERC20Upgradeable(asset).balanceOf(account);
     }
 
     /**

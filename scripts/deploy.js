@@ -93,12 +93,12 @@ async function main() {
     constants.notionalProxy,
     constants.note,
     constants.nusdc,
-    constants.currencyId,
+    constants.usdcCurrencyId,
   ]);
   // await verifyUpgradeable(cusdc.address);
 
   // Deploy Exchange
-  const exchange = await deployContract(deployer, "Exchange", [constants.weth, controller.address]);
+  const exchange = await deployUpgradeable(deployer, "Exchange", [constants.weth, controller.address]);
   // await verifyContract(exchange.address, [constants.weth, controller.address]);
 
   // Deploy Univ2
