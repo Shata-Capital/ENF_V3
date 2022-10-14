@@ -13,8 +13,6 @@ import "./interfaces/IConvexBooster.sol";
 import "./interfaces/IConvexReward.sol";
 import "./interfaces/IPrice.sol";
 
-import "hardhat/console.sol";
-
 contract CompoundV3 is OwnableUpgradeable, ISubStrategy {
     using SafeMath for uint256;
 
@@ -139,7 +137,7 @@ contract CompoundV3 is OwnableUpgradeable, ISubStrategy {
     function _totalAssets() internal view returns (uint256) {
         if (totalLP == 0) return 0;
         // uint256 assets = ICurvePoolCompound(curvePool).calc_withdraw_one_coin(totalLP, tokenId);
-        uint256 assets = totalLP * IPrice(curvePool).get_virtual_price() / virtualPriceMag;
+        uint256 assets = (totalLP * IPrice(curvePool).get_virtual_price()) / virtualPriceMag;
         return assets;
     }
 
@@ -173,7 +171,7 @@ contract CompoundV3 is OwnableUpgradeable, ISubStrategy {
 
         // Calculate Minimum output considering slippage
         // uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
-        uint256 expectOutput = _amount * virtualPriceMag / IPrice(curvePool).get_virtual_price();
+        uint256 expectOutput = (_amount * virtualPriceMag) / IPrice(curvePool).get_virtual_price();
 
         // Calculate Minimum output considering slippage
         uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
@@ -225,7 +223,7 @@ contract CompoundV3 is OwnableUpgradeable, ISubStrategy {
 
         // Calculate Minimum output
         // uint256 minAmt = ICurvePoolCompound(curvePool).calc_withdraw_one_coin(lpWithdrawn, tokenId);
-        uint256 minAmt = lpWithdrawn * IPrice(curvePool).get_virtual_price() / virtualPriceMag;
+        uint256 minAmt = (lpWithdrawn * IPrice(curvePool).get_virtual_price()) / virtualPriceMag;
         minAmt = (minAmt * (magnifier - withdrawSlippage)) / magnifier;
 
         // Approve LP token to Curve

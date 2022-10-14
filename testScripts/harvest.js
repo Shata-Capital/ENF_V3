@@ -11,7 +11,7 @@ const {
   vaultContract,
 } = require("../test/externalContracts");
 
-const address = require("./address.json");
+const address = require("../scripts/address.json");
 const vault = address["ENF Vault address"];
 const controller = address["Controller address"];
 const curve = address["Curve address"];

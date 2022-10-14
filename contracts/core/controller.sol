@@ -129,7 +129,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
 
         uint256 depositAmt = _deposit(_amount);
         return depositAmt;
-    } 
+    }
 
     /**
         _deposit is internal function for deposit action, if default option is set, deposit all requested amount to default sub strategy.
@@ -157,8 +157,9 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
                 allocLeft -= subStrategies[i].allocPoint;
 
                 // If alloc left is zero, means there is no SS to which the asset will be sent
-                if (allocLeft == 0) amountForSS = amtLeft;
-                // If alloc point is still left, calculate amt by linear functionality
+                if (allocLeft == 0)
+                    amountForSS = amtLeft;
+                    // If alloc point is still left, calculate amt by linear functionality
                 else amountForSS = (_amount * subStrategies[i].allocPoint) / totalAllocPoint;
 
                 if (amountForSS == 0) continue;
@@ -179,11 +180,16 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
         Withdraw requested amount of asset and send to receiver as well as send to treasury
         if default pool has enough asset, withdraw from it. unless loop through SS in the sequence of APY, and try to withdraw
      */
-    function withdraw(uint256 _amount, address _receiver) external override onlyVault returns (uint256 withdrawAmt, uint256 fee) {
+    function withdraw(uint256 _amount, address _receiver)
+        external
+        override
+        onlyVault
+        returns (uint256 withdrawAmt, uint256 fee)
+    {
         // Check input amount
         require(_amount > 0, "ZERO AMOUNT");
 
-        // Check substrategy length 
+        // Check substrategy length
         require(subStrategies.length > 0, "INVALID_POOL_LENGTH");
 
         // Todo: withdraw as much as possible
@@ -227,7 +233,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
      */
     function withdrawable(uint256 _amount) public view returns (uint256 withdrawAmt) {
         if (_amount == 0 || subStrategies.length == 0) return 0;
-        
+
         uint256 toWithdraw = _amount;
         for (uint256 i = 0; i < subStrategies.length; i++) {
             uint256 withdrawFromSS = ISubStrategy(subStrategies[apySort[i]].subStrategy).withdrawable(toWithdraw);
@@ -311,7 +317,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
 
         require(assetsHarvested > 0, "ZERO_REWARD_HARVESTED");
 
-        uint256 fee = harvestFee * assetsHarvested / magnifier;
+        uint256 fee = (harvestFee * assetsHarvested) / magnifier;
         TransferHelper.safeTransfer(address(asset), treasury, fee);
 
         uint256 toDeposit = assetsHarvested - fee;

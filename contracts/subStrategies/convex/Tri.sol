@@ -13,8 +13,6 @@ import "./interfaces/IConvexBooster.sol";
 import "./interfaces/IConvexReward.sol";
 import "./interfaces/IPrice.sol";
 
-import "hardhat/console.sol";
-
 contract Tri is OwnableUpgradeable, ISubStrategy {
     using SafeMath for uint256;
 
@@ -172,7 +170,7 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
 
         // Calculate Minimum output considering slippage
         // uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
-        uint256 expectOutput = _amount * virtualPriceMag / IPrice(curvePool).get_virtual_price();
+        uint256 expectOutput = (_amount * virtualPriceMag) / IPrice(curvePool).get_virtual_price();
 
         // Calculate Minimum output considering slippage
         uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
@@ -224,7 +222,7 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
 
         // Calculate Minimum output
         // uint256 minAmt = ICurvePoolTri(curvePool).calc_withdraw_one_coin(lpWithdrawn, tokenId);
-        uint256 minAmt = lpWithdrawn * IPrice(curvePool).get_virtual_price() / virtualPriceMag;
+        uint256 minAmt = (lpWithdrawn * IPrice(curvePool).get_virtual_price()) / virtualPriceMag;
         minAmt = (minAmt * (magnifier - withdrawSlippage)) / magnifier;
 
         // Approve LP token to Curve
@@ -305,7 +303,7 @@ contract Tri is OwnableUpgradeable, ISubStrategy {
         uint256 total = _totalAssets();
 
         if (total == 0) return 0;
-        
+
         // If requested amt is bigger than total asset, try withdraw total
         if (_amount > total) _amount = total;
 

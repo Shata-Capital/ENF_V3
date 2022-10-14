@@ -134,7 +134,7 @@ contract UniswapV3 is IRouter, Ownable {
         address _to,
         bytes32 _index,
         uint256 _amount
-    ) external override onlyExchange{
+    ) external override onlyExchange {
         PathInfo storage _path = paths[_index];
 
         // Check Path from and to
@@ -162,7 +162,6 @@ contract UniswapV3 is IRouter, Ownable {
             // Approve token
             IERC20(_from).approve(router, 0);
             IERC20(_from).approve(router, _amount);
-
             output = IUniswapV3Router(router).exactInputSingle(params);
         } else {
             output = IUniswapV3Router(router).exactInputSingle{value: _amount}(params);

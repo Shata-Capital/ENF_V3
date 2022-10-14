@@ -134,8 +134,6 @@ contract UniswapV2 is IRouter, Ownable {
 
         uint256 balance = getBalance(_from, address(this));
 
-        console.log("From token: ", _from, paths[_index].path[0], paths[_index].path[1]);
-        console.log("balance: ", getBalance(_from, address(this)), _amount);
         require(balance >= _amount, "INSUFFICIENT_TOKEN_TRANSFERED");
 
         // If fromToken is weth, no need to approve

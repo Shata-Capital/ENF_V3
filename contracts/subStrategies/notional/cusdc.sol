@@ -10,7 +10,6 @@ import "../../interfaces/ISubStrategy.sol";
 import "../../utils/TransferHelper.sol";
 import "./interfaces/INotionalProxy.sol";
 import "./interfaces/INusdc.sol";
-import "hardhat/console.sol";
 
 contract Cusdc is OwnableUpgradeable, ISubStrategy {
     using SafeMath for uint256;

@@ -169,7 +169,6 @@ contract BalancerV2 is IRouter, Ownable {
 
         uint256 limit = 0;
 
-        console.log("Asset: ", _swap.assetIn, _swap.assetOut);
         // Call batch swap in balancer
         if (_from == weth)
             IBalancer(balancerVault).swap{value: _amount}(singleSwap, funds, limit, block.timestamp + 3600);

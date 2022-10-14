@@ -13,7 +13,6 @@ import "../../utils/TransferHelper.sol";
 import "./interfaces/INotionalProxy.sol";
 import "./interfaces/INusdc.sol";
 import "./interfaces/ICurve.sol";
-import "hardhat/console.sol";
 
 contract CDai is OwnableUpgradeable, ISubStrategy {
     using SafeMath for uint256;
@@ -147,10 +146,8 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
         uint256 nTokenBal = IERC20(nDAI).balanceOf(address(this));
 
         uint256 nTokenTotal = IERC20(nDAI).totalSupply();
-        console.log("NToken: ", nTokenBal, nTokenTotal);
 
         int256 underlyingDenominated = INusdc(nDAI).getPresentValueUnderlyingDenominated();
-        console.log("underlyingDenominated: ", uint256(underlyingDenominated));
 
         if (underlyingDenominated < 0) return 0;
         else {
@@ -197,14 +194,11 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
         // Approve fromToken to Exchange
         IERC20(usdc).approve(exchange, 0);
         IERC20(usdc).approve(exchange, usdcAmt);
-        console.log("USDC Amt: ", usdcAmt, router);
 
         // Call Swap on exchange
         IExchange(exchange).swapExactTokenInput(usdc, dai, router, usdcDaiIndex, usdcAmt);
 
         uint256 daiAmt = IERC20(dai).balanceOf(address(this));
-
-        console.log("Dai Amt: ", daiAmt);
 
         // Make Balance Action
         BalanceAction[] memory actions = new BalanceAction[](1);
@@ -226,11 +220,9 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
 
         // Get new total assets amount
         uint256 newAmt = _totalAssets();
-        console.log("New Amt:", newAmt);
 
         // Deposited amt
         uint256 deposited = newAmt - prevAmt;
-        console.log("deposited Amt:", deposited);
         uint256 minOutput = (_amount * (magnifier - depositSlippage)) / magnifier;
 
         require(deposited >= minOutput, "DEPOSIT_SLIPPAGE_TOO_BIG");
@@ -248,13 +240,11 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
 
         uint256 lpAmt = (totalLP * _amount) / total;
 
-        console.log("LP Amt: ", totalLP, lpAmt);
         // Withdraw nDAI
         _withdraw(lpAmt);
 
         // Swap DAI to USDC
         uint256 daiAmt = IERC20(dai).balanceOf(address(this));
-        console.log("daiAmt: ", daiAmt);
         // Approve DAI to Exchange
         IERC20(dai).approve(exchange, 0);
         IERC20(dai).approve(exchange, daiAmt);

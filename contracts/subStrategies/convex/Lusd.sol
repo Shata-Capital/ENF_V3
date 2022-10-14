@@ -13,8 +13,6 @@ import "./interfaces/IConvexBooster.sol";
 import "./interfaces/IConvexReward.sol";
 import "./interfaces/IPrice.sol";
 
-import "hardhat/console.sol";
-
 contract Lusd is OwnableUpgradeable, ISubStrategy {
     using SafeMath for uint256;
 
@@ -139,7 +137,7 @@ contract Lusd is OwnableUpgradeable, ISubStrategy {
     function _totalAssets() internal view returns (uint256) {
         if (totalLP == 0) return 0;
         // uint256 assets = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, totalLP, tokenId);
-        uint256 assets = totalLP * IPrice(lpToken).get_virtual_price() / virtualPriceMag;
+        uint256 assets = (totalLP * IPrice(lpToken).get_virtual_price()) / virtualPriceMag;
         return assets;
     }
 
@@ -170,7 +168,7 @@ contract Lusd is OwnableUpgradeable, ISubStrategy {
 
         // Calculate LP output expect to avoid front running
         // uint256 expectOutput = ICurvePoolAlusd(curvePool).calc_token_amount(lpToken, amounts, true);
-        uint256 expectOutput = _amount * virtualPriceMag / IPrice(lpToken).get_virtual_price();
+        uint256 expectOutput = (_amount * virtualPriceMag) / IPrice(lpToken).get_virtual_price();
 
         // Calculate Minimum output considering slippage
         uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
@@ -222,7 +220,7 @@ contract Lusd is OwnableUpgradeable, ISubStrategy {
 
         // Calculate Minimum output
         // uint256 minAmt = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, lpWithdrawn, tokenId);
-        uint256 minAmt = lpWithdrawn * IPrice(lpToken).get_virtual_price() / virtualPriceMag;
+        uint256 minAmt = (lpWithdrawn * IPrice(lpToken).get_virtual_price()) / virtualPriceMag;
         minAmt = (minAmt * (magnifier - withdrawSlippage)) / magnifier;
 
         // Approve LP token to Curve

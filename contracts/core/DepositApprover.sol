@@ -6,8 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../interfaces/IVault.sol";
 
-import "hardhat/console.sol";
-
 contract DepositApprover is Ownable {
     address public vault;
     address public asset;
@@ -25,10 +23,9 @@ contract DepositApprover is Ownable {
         uint256 prevBal = getBalance(address(vault));
         IERC20(asset).transferFrom(msg.sender, vault, amount);
         uint256 newBal = getBalance(address(vault));
-        console.log("NewBal: ", newBal, prevBal, amount);
         IVault(vault).deposit(newBal - prevBal, msg.sender);
     }
-    
+
     function getBalance(address account) internal view returns (uint256) {
         // Asset is zero address when it is ether
         if (address(asset) == address(0)) return address(account).balance;

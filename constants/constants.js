@@ -12,15 +12,18 @@ exports.note = "0xCFEAead4947f0705A14ec42aC3D44129E1Ef3eD5";
 exports.cvx = "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B";
 exports.dai = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
 
+exports.wbtc = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599";
+
 /**
  * Router Addresses
  */
 exports.uniSwapV2Router = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
 exports.uniSwapV2Factory = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
-exports.uniSwapV3Router = "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45";
+exports.uniSwapV3Router = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45";
 exports.balancerV2Vault = "0xBA12222222228d8Ba445958a75a0704d566BF2C8";
 exports.sushiSwapV2Router = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
 exports.sushiSwapV2Factory = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
+exports.v3Quoter = "0x61fFE014bA17989E743c5F6cB21bF9697530B21e";
 
 /**
  * Convex Address
@@ -143,7 +146,7 @@ exports.univ3CRVETH = [
 
 exports.univ3ETHUSDC = [
   "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-  "0xD533a949740bb3306d119CC777fa900bA034cd52", // CRV
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // CRV
   500,
 ];
 
@@ -187,3 +190,25 @@ exports.curveDAIUSDC = [
   1, // j
   false, // ETH_pool
 ];
+
+// Curve 3 Pool
+exports.curve3ETHUSDC = [
+  "0xfA9a30350048B2BF66865ee20363067c66f67e58", // Pool
+  "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", // WETH
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
+];
+
+/**
+ * BTC SubStrategies
+ */
+exports.curveRenBTC = "0x7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714";
+exports.renBTCLP = "0x075b1bb99792c9E1041bA13afEf80C91a1e70fB3";
+exports.renBTCId = 6;
+
+exports.curveSBTC = "0x7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714";
+exports.sBTCLP = "0x075b1bb99792c9E1041bA13afEf80C91a1e70fB3";
+exports.sBTCId = 7;
+
+exports.curveTBTC = "0xaa82ca713D94bBA7A89CEAB55314F9EfFEdDc78c";
+exports.tBTCLP = "0x64eda51d3Ad40D56b9dFc5554E06F94e1Dd786Fd";
+exports.tBTCId = 16;

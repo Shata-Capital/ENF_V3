@@ -5,11 +5,12 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./interfaces/ICurvePool.sol";
+import "./interfaces/ICurve3Pool.sol";
 import "../utils/TransferHelper.sol";
 import "../interfaces/IRouter.sol";
+import "hardhat/console.sol";
 
-contract Curve is IRouter, Ownable {
+contract Curve3Pool is IRouter, Ownable {
     using SafeMath for uint256;
 
     string public constant version = "Curve 1";
@@ -18,10 +19,7 @@ contract Curve is IRouter, Ownable {
     struct CurvePool {
         address pool;
         address from;
-        uint256 i;
         address to;
-        uint256 j;
-        bool ethPool;
     }
 
     // Array for path indices
@@ -34,8 +32,10 @@ contract Curve is IRouter, Ownable {
 
     address public exchange;
 
-    event AddCurvePool(address pool, address from, address to, uint256 i, uint256 j);
-    event RemoveCurvePool(address pool, address from, address to, uint256 i, uint256 j);
+    address public constant NULL_ADDR = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
+    event AddCurvePool(address pool, address from, address to);
+    event RemoveCurvePool(address pool, address from, address to);
 
     constructor(address _weth, address _exchange) {
         weth = _weth;
@@ -63,23 +63,20 @@ contract Curve is IRouter, Ownable {
     function addCurvePool(
         address _pool,
         address _from,
-        address _to,
-        uint256 _i,
-        uint256 _j,
-        bool _ethPool
+        address _to
     ) public onlyOwner returns (bytes32) {
         // Generate hash index for path
-        bytes32 hash = keccak256(abi.encodePacked(_pool, _from, _to, _i, _j, _ethPool));
+        bytes32 hash = keccak256(abi.encodePacked(_pool, _from, _to));
 
         // Duplication check
         require(pools[hash].pool == address(0), "ALREADY_EXIST_POOL");
 
         // Add new Curve pool
-        pools[hash] = CurvePool({pool: _pool, from: _from, to: _to, i: _i, j: _j, ethPool: _ethPool});
+        pools[hash] = CurvePool({pool: _pool, from: _from, to: _to});
 
         pathBytes.push(hash);
 
-        emit AddCurvePool(_pool, _from, _to, _i, _j);
+        emit AddCurvePool(_pool, _from, _to);
 
         return hash;
     }
@@ -104,7 +101,7 @@ contract Curve is IRouter, Ownable {
             }
         }
 
-        emit RemoveCurvePool(curvePool.pool, curvePool.from, curvePool.to, curvePool.i, curvePool.j);
+        emit RemoveCurvePool(curvePool.pool, curvePool.from, curvePool.to);
     }
 
     /**
@@ -114,12 +111,9 @@ contract Curve is IRouter, Ownable {
     function getPathIndex(
         address _pool,
         address _from,
-        address _to,
-        uint256 _i,
-        uint256 _j,
-        bool _ethPool
+        address _to
     ) public view returns (bytes32) {
-        bytes32 hash = keccak256(abi.encodePacked(_pool, _from, _to, _i, _j, _ethPool));
+        bytes32 hash = keccak256(abi.encodePacked(_pool, _from, _to));
 
         if (pools[hash].pool == address(0)) return 0;
         else return hash;
@@ -158,18 +152,26 @@ contract Curve is IRouter, Ownable {
         // Get Curve Pool address
         CurvePool storage curve = pools[_index];
 
-        // Approve token
-        IERC20(_from).approve(curve.pool, 0);
-        IERC20(_from).approve(curve.pool, _amount);
+        address initial = _from == weth ? NULL_ADDR : _from;
+        console.log("Initial: ", initial, _to);
+        (address[6] memory _route, uint256[8] memory _indices, uint256 _min_received) = ICurve3Pool(curve.pool)
+            .get_exchange_routing(initial, _to, _amount);
+        console.log("Route: ", _min_received);
 
-        if (curve.ethPool) {
-            if (_to == weth) ICurvePoolToETH(curve.pool).exchange(curve.i, curve.j, _amount, 0, true);
-            else ICurvePoolToETH(curve.pool).exchange_underlying(curve.i, curve.j, _amount, 0);
+        if (_from != weth) {
+            // Approve token
+            IERC20(_from).approve(curve.pool, 0);
+            IERC20(_from).approve(curve.pool, _amount);
+
+            // Call Exchange
+            ICurve3Pool(curve.pool).exchange(_amount, _route, _indices, 0, address(this));
         } else {
-            ICurvePool(curve.pool).exchange(int128(uint128(curve.i)), int128(uint128(curve.j)), _amount, 0);
+            // Call Exchange
+            ICurve3Pool(curve.pool).exchange{value: _amount}(_amount, _route, _indices, 0, address(this));
         }
 
         uint256 out = getBalance(_to, address(this));
+        console.log("Out: ", out);
         // If toTOken is weth, withdraw ETH from it
         if (_to == weth) {
             TransferHelper.safeTransferETH(exchange, out);

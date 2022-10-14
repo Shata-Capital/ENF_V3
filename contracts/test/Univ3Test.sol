@@ -29,7 +29,7 @@ interface IWeth {
 }
 
 contract UniV3Test {
-    address router2 = 0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511;
+    address router2 = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
     address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     address crv = 0xD533a949740bb3306d119CC777fa900bA034cd52;
@@ -39,26 +39,26 @@ contract UniV3Test {
 
     constructor() {}
 
-    function swap(uint256 amount) public {
-        IERC20(crv).transferFrom(msg.sender, address(this), amount);
+    function swap(uint256 amount) public payable {
+        // IERC20(crv).transferFrom(msg.sender, address(this), amount);
 
-        IERC20(crv).approve(router2, 0);
-        IERC20(crv).approve(router2, 100000000000000000000000000000000000);
+        // IERC20(crv).approve(router2, 0);
+        // IERC20(crv).approve(router2, 100000000000000000000000000000000000);
 
         IUniswapV3Router.ExactInputSingleParams memory params = IUniswapV3Router.ExactInputSingleParams({
-            tokenIn: crv,
-            tokenOut: weth,
+            tokenIn: weth,
+            tokenOut: crv,
             fee: uint24(3000),
-            recipient: msg.sender,
+            recipient: address(this),
             amountIn: amount,
             amountOutMinimum: 0,
             sqrtPriceLimitX96: uint160(0)
         });
 
-        uint256 amountOut = IUniswapV3Router(router2).exactInputSingle(params);
+        uint256 amountOut = IUniswapV3Router(router2).exactInputSingle{value: msg.value}(params);
         console.log(amountOut);
 
-        uint256 wethOut = IERC20(weth).balanceOf(address(this));
+        uint256 wethOut = IERC20(crv).balanceOf(address(this));
         console.log("WETH out: ", wethOut);
         IWeth(weth).withdraw(wethOut);
 

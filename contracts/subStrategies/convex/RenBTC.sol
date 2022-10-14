@@ -8,16 +8,16 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../interfaces/ISubStrategy.sol";
 import "../../utils/TransferHelper.sol";
-import "./interfaces/ICurvePoolAlusd.sol";
+import "./interfaces/ICurvePoolRenBTC.sol";
 import "./interfaces/IConvexBooster.sol";
 import "./interfaces/IConvexReward.sol";
 import "./interfaces/IPrice.sol";
 
-contract Alusd is OwnableUpgradeable, ISubStrategy {
+contract RenBTC is OwnableUpgradeable, ISubStrategy {
     using SafeMath for uint256;
 
     // Sub Strategy name
-    string public constant poolName = "Alusd V3";
+    string public constant poolName = "RenBTC V3";
 
     // Curve Pool Address
     address public curvePool;
@@ -28,8 +28,8 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     // Controller address
     address public controller;
 
-    // USDC token address
-    address public usdc;
+    // RenBTC token address
+    address public renBTC;
 
     // Convex Booster address
     address public convex;
@@ -47,7 +47,7 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     // Total LP token deposit to convex booster
     uint256 public totalLP;
 
-    // USDC token id for withdraw in curve pool
+    // RenBTC token id for withdraw in curve pool
     int128 public constant tokenId = 2;
 
     // Harvest Gap
@@ -92,7 +92,7 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
         address _curvePool,
         address _lpToken,
         address _controller,
-        address _usdc,
+        address _renBTC,
         address _convex,
         uint256 _pId
     ) public initializer {
@@ -100,7 +100,7 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
         curvePool = _curvePool;
         lpToken = _lpToken;
         controller = _controller;
-        usdc = _usdc;
+        renBTC = _renBTC;
         convex = _convex;
         pId = _pId;
 
@@ -121,7 +121,7 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     //////////////////////////////////////////
 
     /**
-        External view function of total USDC deposited in Covex Booster
+        External view function of total RenBTC deposited in Covex Booster
      */
     function totalAssets() external view override returns (uint256) {
         return _totalAssets();
@@ -132,11 +132,11 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     }
 
     /**
-        Internal view function of total USDC deposited
+        Internal view function of total RenBTC deposited
     */
     function _totalAssets() internal view returns (uint256) {
         if (totalLP == 0) return 0;
-        // uint256 assets = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, totalLP, tokenId);
+        // uint256 assets = ICurvePoolRenBTC(curvePool).calc_withdraw_one_coin(lpToken, totalLP, tokenId);
 
         uint256 assets = (totalLP * IPrice(lpToken).get_virtual_price()) / virtualPriceMag;
 
@@ -144,7 +144,7 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     }
 
     /**
-        Deposit function of USDC
+        Deposit function of RenBTC
      */
     function deposit(uint256 _amount) external override onlyController returns (uint256) {
         uint256 deposited = _deposit(_amount);
@@ -161,16 +161,16 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
         // Check Max Deposit
         require(prevAmt + _amount <= maxDeposit, "EXCEED_MAX_DEPOSIT");
 
-        // Check whether transferred sufficient usdc from controller
-        require(IERC20(usdc).balanceOf(address(this)) >= _amount, "INSUFFICIENT_USDC_TRANSFER");
+        // Check whether transferred sufficient renBTC from controller
+        require(IERC20(renBTC).balanceOf(address(this)) >= _amount, "INSUFFICIENT_RenBTC_TRANSFER");
 
-        // Approve USDC to curve pool
-        IERC20(usdc).approve(curvePool, 0);
-        IERC20(usdc).approve(curvePool, _amount);
+        // Approve RenBTC to curve pool
+        IERC20(renBTC).approve(curvePool, 0);
+        IERC20(renBTC).approve(curvePool, _amount);
 
         // // Calculate LP output expect to avoid front running
         // uint256[4] memory amounts = [0, 0, _amount, 0];
-        // uint256 expectOutput = ICurvePoolAlusd(curvePool).calc_token_amount(lpToken, amounts, true);
+        // uint256 expectOutput = ICurvePoolRenBTC(curvePool).calc_token_amount(lpToken, amounts, true);
 
         uint256 expectOutput = (_amount * virtualPriceMag) / IPrice(lpToken).get_virtual_price();
 
@@ -178,8 +178,8 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
         uint256 minOutput = (expectOutput * (magnifier - depositSlippage)) / magnifier;
 
         // Add liquidity to Curve pool
-        uint256[4] memory amounts = [0, 0, _amount, 0];
-        ICurvePoolAlusd(curvePool).add_liquidity(lpToken, amounts, minOutput);
+        uint256[2] memory amounts = [0, _amount];
+        ICurvePoolRenBTC(curvePool).add_liquidity(amounts, minOutput);
 
         // Get LP token amount output
         uint256 lpAmt = IERC20(lpToken).balanceOf(address(this));
@@ -199,7 +199,7 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
     }
 
     /**
-        Withdraw function of USDC
+        Withdraw function of RenBTC
      */
     function withdraw(uint256 _amount) external override onlyController returns (uint256) {
         // Get Current Deposit Amt
@@ -223,19 +223,19 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
         totalLP -= lpWithdrawn;
 
         // Calculate Minimum output
-        // uint256 minAmt = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, lpWithdrawn, tokenId);
+        // uint256 minAmt = ICurvePoolRenBTC(curvePool).calc_withdraw_one_coin(lpToken, lpWithdrawn, tokenId);
         uint256 minAmt = (lpWithdrawn * IPrice(lpToken).get_virtual_price()) / virtualPriceMag;
         minAmt = (minAmt * (magnifier - withdrawSlippage)) / magnifier;
 
         // Approve LP token to Curve
         IERC20(lpToken).approve(curvePool, lpWithdrawn);
 
-        // Withdraw USDC from Curve Pool
-        ICurvePoolAlusd(curvePool).remove_liquidity_one_coin(lpToken, lpWithdrawn, tokenId, minAmt);
+        // Withdraw RenBTC from Curve Pool
+        ICurvePoolRenBTC(curvePool).remove_liquidity_one_coin(lpWithdrawn, tokenId, minAmt);
 
-        // Transfer withdrawn USDC to controller
-        uint256 asset = IERC20(usdc).balanceOf(address(this));
-        TransferHelper.safeTransfer(usdc, controller, asset);
+        // Transfer withdrawn RenBTC to controller
+        uint256 asset = IERC20(renBTC).balanceOf(address(this));
+        TransferHelper.safeTransfer(renBTC, controller, asset);
 
         return asset;
     }
@@ -290,7 +290,7 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
      */
     function ownerDeposit(uint256 _amount) public onlyOwner {
         // Transfer token from owner
-        TransferHelper.safeTransferFrom(usdc, owner(), address(this), _amount);
+        TransferHelper.safeTransferFrom(renBTC, owner(), address(this), _amount);
 
         // Call deposit
         _deposit(_amount);
@@ -311,7 +311,7 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
         if (_amount > total) _amount = total;
 
         uint256 lpAmt = (totalLP * _amount) / total;
-        uint256 expectedOutput = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, lpAmt, tokenId);
+        uint256 expectedOutput = ICurvePoolRenBTC(curvePool).calc_withdraw_one_coin(lpAmt, tokenId);
 
         // If expected output is
         if (expectedOutput >= (_amount * (magnifier - withdrawSlippage)) / magnifier) return _amount;

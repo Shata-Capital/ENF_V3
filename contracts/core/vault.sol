@@ -12,8 +12,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "../interfaces/IController.sol";
 import "../utils/TransferHelper.sol";
 
-import "hardhat/console.sol";
-
 contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for ERC20Upgradeable;
     using SafeMath for uint256;
@@ -34,7 +32,14 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
 
     event Deposit(address indexed asset, address indexed caller, address indexed owner, uint256 assets, uint256 shares);
 
-    event Withdraw(address indexed asset, address indexed caller, address indexed owner, uint256 assets, uint256 shares, uint256 fee);
+    event Withdraw(
+        address indexed asset,
+        address indexed caller,
+        address indexed owner,
+        uint256 assets,
+        uint256 shares,
+        uint256 fee
+    );
 
     event SetMaxDeposit(uint256 maxDeposit);
 
@@ -70,8 +75,7 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
 
         // Need to transfer before minting or ERC777s could reenter.
         TransferHelper.safeTransfer(address(asset), address(controller), assets);
-        console.log("Transfered");
-        
+
         // Total Assets amount until now
         uint256 totalDeposit = IController(controller).totalAssets();
         // Calls Deposit function on controller
@@ -109,7 +113,7 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
         // Calls Withdraw function on controller
         (uint256 withdrawn, uint256 fee) = IController(controller).withdraw(assets, receiver);
 
-        require(withdrawn > 0, "INVALID_WITHDRAWN_SHARES"); 
+        require(withdrawn > 0, "INVALID_WITHDRAWN_SHARES");
 
         // Shares could exceed balance of caller
         if (balanceOf(msg.sender) < shares) shares = balanceOf(msg.sender);
