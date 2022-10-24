@@ -150,7 +150,7 @@ contract Curve3Pool is IRouter, Ownable {
         require(balance >= _amount, "INSUFFICIENT_TOKEN_TRANSFERED");
 
         // Get Curve Pool address
-        CurvePool storage curve = pools[_index];
+        CurvePool memory curve = pools[_index];
 
         address initial = _from == weth ? NULL_ADDR : _from;
         console.log("Initial: ", initial, _to);

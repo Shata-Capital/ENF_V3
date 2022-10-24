@@ -161,7 +161,7 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
             uint256 i = curvePool.i;
             uint256 j = curvePool.j;
 
-            // Calculate withdraw amout of usdc - from Dai (j) to USDC(i)
+            // Calculate withdraw amout of usdc - from Dai (i) to USDC(j)
             uint256 usdcBal = ICurvePool(poolAddr).get_dy(int128(uint128(i)), int128(uint128(j)), daiBal);
 
             return usdcBal;
