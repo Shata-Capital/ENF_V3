@@ -212,15 +212,17 @@ contract Alusd is OwnableUpgradeable, ISubStrategy {
         // Withdraw Reward
         IConvexReward(crvRewards).withdraw(lpAmt, false);
 
+        uint256 lpBefore = IERC20(lpToken).balanceOf(address(this));
+
         // Withdraw from Convex Pool
         IConvexBooster(convex).withdraw(pId, lpAmt);
 
         // Get LP Token Amt
-        uint256 lpWithdrawn = IERC20(lpToken).balanceOf(address(this));
+        uint256 lpWithdrawn = IERC20(lpToken).balanceOf(address(this)) - lpBefore;
 
         // See if LP withdrawn as requested amount
         require(lpWithdrawn >= lpAmt, "LP_WITHDRAWN_NOT_MATCH");
-        totalLP -= lpWithdrawn;
+        totalLP -= lpAmt;
 
         // Calculate Minimum output
         // uint256 minAmt = ICurvePoolAlusd(curvePool).calc_withdraw_one_coin(lpToken, lpWithdrawn, tokenId);
