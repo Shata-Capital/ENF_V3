@@ -28,10 +28,10 @@ async function main() {
   console.log(`\tUSDC of Alice: ${toUSDC(curUSDC)}`);
 
   // Approve to deposit approver
-  await usdcContract(deployer).approve(depositApprover, fromUSDC(1000));
+  await usdcContract(deployer).approve(depositApprover, fromUSDC(100));
 
   // Deposit
-  await depositApproverContract(deployer, depositApprover).deposit(fromUSDC(1000));
+  await depositApproverContract(deployer, depositApprover).deposit(fromUSDC(100));
 }
 
 main();

@@ -63,8 +63,6 @@ contract UniswapV2 is IRouter, Ownable {
         // Duplication check
         require(paths[hash].path.length == 0, "ALREADY_EXIST_PATH");
 
-        pathBytes.push(hash);
-
         // Register path
         pathBytes.push(hash);
         paths[hash].path = _path;

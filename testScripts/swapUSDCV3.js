@@ -38,20 +38,20 @@ async function swapUSDC(caller) {
 async function main() {
   const [deployer] = await ethers.getSigners();
 
-  let curUSDC = await crvContract(deployer).balanceOf(deployer.address);
-  console.log(`\tCRV of Alice: ${toEth(curUSDC)}`);
+  // let curUSDC = await crvContract(deployer).balanceOf(deployer.address);
+  // console.log(`\tCRV of Alice: ${toEth(curUSDC)}`);
 
-  // await swapUSDC(deployer);
+  // // await swapUSDC(deployer);
 
-  const UniV3Test = await ethers.getContractFactory("UniV3Test");
-  const uniV3 = await UniV3Test.deploy();
+  // const UniV3Test = await ethers.getContractFactory("UniV3Test");
+  // const uniV3 = await UniV3Test.deploy();
 
-  // await crvContract(deployer).approve(uniV3.address, fromEth(10000));
+  // // await crvContract(deployer).approve(uniV3.address, fromEth(10000));
 
-  await uniV3.swap(fromEth(1), { value: fromEth(1) });
+  // await uniV3.swap(fromEth(1), { value: fromEth(1) });
 
-  curUSDC = await crvContract(deployer).balanceOf(deployer.address);
-  console.log(`\tCRV of Alice: ${toEth(curUSDC)}`);
+  // curUSDC = await crvContract(deployer).balanceOf(deployer.address);
+  // console.log(`\tCRV of Alice: ${toEth(curUSDC)}`);
 
   // let encoded = {
   //   tokenIn: constants.crv,
@@ -60,15 +60,15 @@ async function main() {
   //   amountIn: fromEth(1),
   //   sqrtPriceLimitX96: "0",
   // };
-  // let myQuote = await v3QuoterContract().callStatic.quoteExactInputSingle([
-  //   constants.weth,
-  //   constants.usdc,
-  //   fromEth(1),
-  //   3000,
-  //   0,
-  // ]);
+  let myQuote = await v3QuoterContract().callStatic.quoteExactInputSingle([
+    constants.crv,
+    constants.usdc,
+    fromEth(1),
+    10000,
+    0,
+  ]);
 
-  // console.log("My quote: ", myQuote);
+  console.log("My quote: ", myQuote);
   // const decoder = new ethers.utils.AbiCoder();
   // const decodeParams = [];
   // let event = await myQuote.wait();

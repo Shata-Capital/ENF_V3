@@ -9,6 +9,7 @@ const {
   notionBatch,
   v3Quoter,
   uniSwapV3Router,
+  curve3Pool,
 } = require("../constants/constants");
 
 const usdcAbi = require("../abi/usdc.json");
@@ -21,6 +22,8 @@ const uniswapV2RouterAbi = require("../abi/uniswapV2Router.json");
 const uniswapV3RouterAbi = require("../abi/uniswapV3Router.json");
 const uniswapV2FactoryAbi = require("../abi/uniswapV2Factory.json");
 const v3QuoterAbi = require("../abi/v3Quoter.json");
+const curve3Abi = require("../abi/curve3.json");
+
 const { abi: depositApproverAbi } = require("../artifacts/contracts/core/DepositApprover.sol/DepositApprover.json");
 const { abi: vaultAbi } = require("../artifacts/contracts/core/Vault.sol/EFVault.json");
 const { abi: controllerAbi } = require("../artifacts/contracts/core/Controller.sol/Controller.json");
@@ -33,6 +36,10 @@ const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");
 
 exports.usdcContract = (deployer) => {
   return new ethers.Contract(usdc, usdcAbi, deployer);
+};
+
+exports.curve3Exchange = (deployer) => {
+  return new ethers.Contract(curve3Pool, curve3Abi, deployer);
 };
 
 exports.wbtcContract = (deployer) => {

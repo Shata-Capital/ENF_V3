@@ -7,6 +7,7 @@ const {
   uniV2RouterContract,
   uniV2FactoryContract,
   alusdContract,
+  curve3Exchange,
 } = require("../test/externalContracts");
 const constants = require("../constants/constants");
 
@@ -42,22 +43,30 @@ async function swapUSDC(caller) {
 async function main() {
   const [deployer] = await ethers.getSigners();
 
-  let curWBTC = await wbtcContract(deployer).balanceOf(deployer.address);
-  console.log(`\tWBTC of Alice: ${toBTC(curWBTC)}`);
+  // let curWBTC = await wbtcContract(deployer).balanceOf(deployer.address);
+  // console.log(`\tWBTC of Alice: ${toBTC(curWBTC)}`);
 
   const CurveMulti = await ethers.getContractFactory("CurveMultiTest");
   const curveMulti = await CurveMulti.deploy();
 
-  await curveMulti.swap(fromEth(1), { value: fromEth(1) });
+  // await curveMulti.swap(fromEth(1), { value: fromEth(1) });
 
-  curWBTC = await wbtcContract(deployer).balanceOf(deployer.address);
-  console.log(`\tWBTC of Alice: ${toBTC(curWBTC)}`);
+  // curWBTC = await wbtcContract(deployer).balanceOf(deployer.address);
+  // console.log(`\tWBTC of Alice: ${toBTC(curWBTC)}`);
 
   let curUSDC = await usdcContract(deployer).balanceOf(deployer.address);
   console.log(`\tUSDC of Alice: ${toUSDC(curUSDC)}`);
   await curveMulti.swapUSDC(fromEth(1), { value: fromEth(1) });
   curUSDC = await usdcContract(deployer).balanceOf(deployer.address);
   console.log(`\tUSDC of Alice: ${toUSDC(curUSDC)}`);
+
+  const out = await curve3Exchange(deployer).get_exchange_routing(
+    "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+    fromEth(1)
+  );
+
+  console.log("Out: ", out);
 }
 
 main();

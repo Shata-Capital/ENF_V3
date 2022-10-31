@@ -40,10 +40,12 @@ function getChainConfig(network: keyof typeof chainIds) {
     accounts: [`${privateKey}`],
     chainId: chainIds[network],
     url,
+    gasPrice: "auto",
+    gasMultiplier: 2,
   };
 }
 
-const config: HardhatUserConfig = {
+const config = {
   gasReporter: {
     currency: "USD",
     enabled: process.env.REPORT_GAS ? true : false,

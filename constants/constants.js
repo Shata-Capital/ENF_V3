@@ -135,7 +135,7 @@ exports.balancerETHToUSDCSwap = [
 exports.univ3CRVUSDC = [
   "0xD533a949740bb3306d119CC777fa900bA034cd52",
   "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-  3000,
+  10000,
 ];
 
 exports.univ3CRVETH = [
@@ -198,6 +198,7 @@ exports.curve3ETHUSDC = [
   "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
 ];
 
+exports.curve3Pool = "0xfA9a30350048B2BF66865ee20363067c66f67e58";
 /**
  * BTC SubStrategies
  */

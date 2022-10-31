@@ -16,9 +16,11 @@ async function main() {
 
   console.log("\nDeploying Contracts\n".yellow);
 
-  const tri = "0x0F97afE1aedFc6B89DE66950296E130cA814B010";
-
-  await verifyUpgradeable(tri);
+  // const tri = "0x0F97afE1aedFc6B89DE66950296E130cA814B010";
+  const cDai = "0xD359D65Cf9Ab8572323Dc8102Ac579baD38AC713";
+  const curve3 = "0xECA1F6Fc9E100585B33392120080e15Ef4Af5c72";
+  // await verifyUpgradeable(cDai);
+  await verifyContract(curve3, [constants.weth, "0xD359D65Cf9Ab8572323Dc8102Ac579baD38AC713"]);
   // await verifyUpgradeable(lusd.address);
   // await verifyUpgradeable(aave.address);
   // await verifyUpgradeable(compound.address);

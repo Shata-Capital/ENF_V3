@@ -12,8 +12,9 @@ const {
   vaultContract,
 } = require("../test/externalContracts");
 
-const address = require("./address.json");
-const { deployUpgradeable } = require("./utils");
+const address = require("./v3_address.json");
+const { deployUpgradeable, deployContract } = require("./utils");
+
 const vault = address["ENF Vault address"];
 const controller = address["Controller address"];
 const exchange = address["Exchange address"];
@@ -21,8 +22,8 @@ const curve = address["Curve address"];
 const uniV2 = address["Uniswap V2"];
 const uniV3 = address["Uniswap V3"];
 const balancer = address["Balancer Address"];
-const balancerBatch = address["Balancer Address"];
-const cDai = address["CDAI address"];
+const balancerBatch = address["Balancer Batch Address"];
+// const cDai = address["CDAI address"];
 
 function toEth(num) {
   return utils.formatEther(num);
@@ -43,42 +44,54 @@ function fromUSDC(num) {
 async function main() {
   const [deployer] = await ethers.getSigners();
 
-  // Deploying Exchange
-  const exchange = await deployUpgradeable(deployer, "Exchange", [constants.weth, controller]);
-  await exchange.listRouter(uniV2);
-  await exchange.listRouter(uniV3);
-  await exchange.listRouter(balancer);
-  await exchange.listRouter(balancerBatch);
-  await exchange.listRouter(curve);
+  // // Deploying Exchange
+  // const exchange = await deployUpgradeable(deployer, "Exchange", [constants.weth, controller]);
+  // await exchange.listRouter(uniV2);
+  // await exchange.listRouter(uniV3);
+  // await exchange.listRouter(balancer);
+  // await exchange.listRouter(balancerBatch);
+  // await exchange.listRouter(curve);
 
-  await exchange.setSwapCaller(cDai, true);
+  // // Deploying Curve3Pool
+  // const curve3 = await deployContract(deployer, "Curve3Pool", [constants.weth, exchange.address]);
+  // await curve3.addCurvePool(...constants.curve3ETHUSDC);
 
-  await controllerContract(deployer, controller).setExchange(exchange.address);
+  // Deploying Curve
+  const curve = await deployContract(deployer, "Curve", [constants.weth, exchange]);
 
-  //   // Deploying Notional
-  //   const cDai = await deployUpgradeable(deployer, "CDai", [
-  //     constants.usdc,
-  //     constants.dai,
-  //     controller,
-  //     constants.notionalProxy,
-  //     constants.note,
-  //     constants.nDai,
-  //     constants.daiCurrencyId,
-  //     exchange,
-  //   ]);
+  // Set CRV-USDC to CURVE
+  await curve.addCurvePool(...curveCRVETH);
+  await curve.addCurvePool(...constants.curveUSDCDAI);
+  await curve.addCurvePool(...constants.curveDAIUSDC);
 
-  //   // Set DepositSlippage on ALUSD
-  //   await cDai.setDepositSlippage(100);
-  //   console.log("Deposit slippage set");
+  const indexDai = await curve.getPathIndex(...constants.curveUSDCDAI);
+  const indexUSDC = await curve.getPathIndex(...constants.curveDAIUSDC);
+  console.log("Dai: ", indexDai);
+  console.log("USDC: ", indexUSDC);
+  // await exchange.listRouter(curve3.address);
 
-  //   // Set WithdrawSlippage on ALUSD
-  //   await cDai.setWithdrawSlippage(100);
-  //   console.log("Withdraw slippage set");
+  // Deploying Notional
 
-  //   await controllerContract(deployer, controller).registerSubStrategy(cDai.address, 100);
+  // const cDai = await deployUpgradeable(deployer, "CDai", [
+  //   constants.usdc,
+  //   constants.dai,
+  //   controller,
+  //   constants.notionalProxy,
+  //   constants.note,
+  //   constants.nDai,
+  //   constants.daiCurrencyId,
+  //   exchange,
+  // ]);
 
-  // Register curve USDC-DAI
-  // await curveExchange(deployer, curve).addCurvePool(...constants.curveUSDCDAI);
+  // // Set DepositSlippage on ALUSD
+  // await cDai.setDepositSlippage(100);
+  // console.log("Deposit slippage set");
+
+  // // Set WithdrawSlippage on ALUSD
+  // await cDai.setWithdrawSlippage(100);
+  // console.log("Withdraw slippage set");
+
+  // await exchange.setSwapCaller(cDai.address, true);
 }
 
 main();
