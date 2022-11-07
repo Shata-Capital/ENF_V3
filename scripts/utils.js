@@ -32,8 +32,12 @@ exports.upgardeContract = async function (deployer, address, contractName) {
 
   console.log(`Upgrading ${contractName}...`.yellow);
 
-  await upgrades.upgradeProxy(address, Contract);
-  console.log(`${contractName} upgraded`.green);
+  try {
+    await upgrades.upgradeProxy(address, Contract);
+    console.log(`${contractName} upgraded`.green);
+  } catch (err) {
+    console.log("Error\n", err);
+  }
 };
 
 exports.verifyContract = async function (contract, params) {

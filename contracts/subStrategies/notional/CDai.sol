@@ -44,6 +44,7 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
     // Slippages for deposit and withdraw
     uint256 public depositSlippage;
     uint256 public withdrawSlippage;
+    uint256 public abstractSlippage;
 
     // Constant magnifier
     uint256 public constant magnifier = 10000;
@@ -85,6 +86,8 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
     event SetDepositSlippage(uint256 depositSlippage);
 
     event SetWithdrawSlippage(uint256 withdrawSlippage);
+
+    event SetAbstractSlippage(uint256 abstractSlippage);
 
     event SetHarvestGap(uint256 harvestGap);
 
@@ -163,7 +166,11 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
 
             // Calculate withdraw amout of usdc - from Dai (i) to USDC(j)
             uint256 usdcBal = ICurvePool(poolAddr).get_dy(int128(uint128(i)), int128(uint128(j)), daiBal);
-
+            require(
+                usdcBal >= ((magnifier - abstractSlippage) * daiBal) / magnifier &&
+                    usdcBal <= ((magnifier + abstractSlippage) * daiBal) / magnifier,
+                "SLIPPAGE_USDC_ERROR"
+            );
             return usdcBal;
         }
     }
@@ -381,6 +388,17 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
         withdrawSlippage = _slippage;
 
         emit SetWithdrawSlippage(withdrawSlippage);
+    }
+
+    /**
+        Set Abstract Slipage
+     */
+    function setAbstractSlippage(uint256 _slippage) public onlyOwner {
+        require(_slippage < magnifier, "INVALID_SLIPPAGE");
+
+        abstractSlippage = _slippage;
+
+        emit SetAbstractSlippage(abstractSlippage);
     }
 
     /**
