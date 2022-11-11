@@ -44,7 +44,6 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
     // Slippages for deposit and withdraw
     uint256 public depositSlippage;
     uint256 public withdrawSlippage;
-    uint256 public abstractSlippage;
 
     // Constant magnifier
     uint256 public constant magnifier = 10000;
@@ -76,6 +75,7 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
 
     // Max Deposit
     uint256 public override maxDeposit;
+    uint256 public abstractSlippage;
 
     event OwnerDeposit(uint256 lpAmount);
 
@@ -139,13 +139,13 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
         External view function of total USDC deposited in Covex Booster
      */
     function totalAssets() external view override returns (uint256) {
-        return _totalAssets();
+        return _totalAssets(true);
     }
 
     /**
         Internal view function of total USDC deposited
     */
-    function _totalAssets() internal view returns (uint256) {
+    function _totalAssets(bool fetch) internal view returns (uint256) {
         uint256 nTokenBal = IERC20(nDAI).balanceOf(address(this));
 
         uint256 nTokenTotal = IERC20(nDAI).totalSupply();
@@ -164,13 +164,21 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
             uint256 i = curvePool.i;
             uint256 j = curvePool.j;
 
+            console.log("Dai Bal: ", daiBal);
             // Calculate withdraw amout of usdc - from Dai (i) to USDC(j)
             uint256 usdcBal = ICurvePool(poolAddr).get_dy(int128(uint128(i)), int128(uint128(j)), daiBal);
-            require(
-                usdcBal >= ((magnifier - abstractSlippage) * daiBal) / magnifier &&
-                    usdcBal <= ((magnifier + abstractSlippage) * daiBal) / magnifier,
-                "SLIPPAGE_USDC_ERROR"
-            );
+            daiBal = (daiBal * usdcDecimal) / daiDecimal;
+            console.log("USDC Bal: ", usdcBal);
+            console.log("Abstract: ", ((magnifier - abstractSlippage) * daiBal) / magnifier);
+            console.log("Abstract: ", ((magnifier + abstractSlippage) * daiBal) / magnifier);
+
+            if (!fetch) {
+                require(
+                    usdcBal >= ((magnifier - abstractSlippage) * daiBal) / magnifier &&
+                        usdcBal <= ((magnifier + abstractSlippage) * daiBal) / magnifier,
+                    "SLIPPAGE_USDC_ERROR"
+                );
+            }
             return usdcBal;
         }
     }
@@ -188,7 +196,7 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
      */
     function _deposit(uint256 _amount) internal returns (uint256) {
         // Get Prev Deposit Amt
-        uint256 prevAmt = _totalAssets();
+        uint256 prevAmt = _totalAssets(false);
 
         // Check Max Deposit
         require(prevAmt + _amount <= maxDeposit, "EXCEED_MAX_DEPOSIT");
@@ -226,7 +234,7 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
         INotionalProxy(notionalProxy).batchBalanceAction(address(this), actions);
 
         // Get new total assets amount
-        uint256 newAmt = _totalAssets();
+        uint256 newAmt = _totalAssets(false);
 
         // Deposited amt
         uint256 deposited = newAmt - prevAmt;
@@ -242,7 +250,7 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
      */
     function withdraw(uint256 _amount) external override onlyController returns (uint256) {
         // Get Current Deposit Amt
-        uint256 total = _totalAssets();
+        uint256 total = _totalAssets(false);
         uint256 totalLP = IERC20(nDAI).balanceOf(address(this));
 
         uint256 lpAmt = (totalLP * _amount) / total;
@@ -333,7 +341,7 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
      */
     function withdrawable(uint256 _amount) external view override returns (uint256) {
         // Get Current Deposit Amt
-        uint256 total = _totalAssets();
+        uint256 total = _totalAssets(false);
 
         // If requested amt is bigger than total asset, return false
         if (_amount > total) return total;
