@@ -268,7 +268,7 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
         // Check the length of indexes and routers are the same
         require(_indexes.length == _routers.length, "NOT_MATCHING_INDEX_ROUTER");
 
-        uint256 prevTotal = _totalAssets();
+        uint256 prevTotal = _totalAssets(true);
         // Loop Through harvest group
         for (uint256 i = 0; i < _ssIds.length; i++) {
             address subStrategy = subStrategies[_ssIds[i]].subStrategy;
@@ -362,15 +362,15 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
     /**
         Query for total assets deposited in all sub strategies
      */
-    function totalAssets() external view override returns (uint256) {
-        return _totalAssets();
+    function totalAssets(bool fetch) external view override returns (uint256) {
+        return _totalAssets(fetch);
     }
 
-    function _totalAssets() internal view returns (uint256) {
+    function _totalAssets(bool fetch) internal view returns (uint256) {
         uint256 total;
 
         for (uint256 i = 0; i < subStrategies.length; i++) {
-            total += ISubStrategy(subStrategies[i].subStrategy).totalAssets();
+            total += ISubStrategy(subStrategies[i].subStrategy).totalAssets(fetch);
         }
 
         return total;

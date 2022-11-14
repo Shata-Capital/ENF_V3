@@ -77,7 +77,7 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
         TransferHelper.safeTransfer(address(asset), address(controller), assets);
 
         // Total Assets amount until now
-        uint256 totalDeposit = IController(controller).totalAssets();
+        uint256 totalDeposit = IController(controller).totalAssets(false);
         // Calls Deposit function on controller
         uint256 newDeposit = IController(controller).deposit(assets);
 
@@ -108,7 +108,7 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
         require(assets <= totalDeposit, "EXCEED_TOTAL_DEPOSIT");
 
         // Calculate share amount to be burnt
-        shares = (totalSupply() * assets) / totalAssets();
+        shares = (totalSupply() * assets) / IController(controller).totalAssets(false);
 
         // Calls Withdraw function on controller
         (uint256 withdrawn, uint256 fee) = IController(controller).withdraw(assets, receiver);
@@ -124,7 +124,7 @@ contract EFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentra
     }
 
     function totalAssets() public view virtual returns (uint256) {
-        return IController(controller).totalAssets();
+        return IController(controller).totalAssets(true);
     }
 
     function convertToShares(uint256 assets) public view virtual returns (uint256) {

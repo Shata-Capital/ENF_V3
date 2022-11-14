@@ -138,8 +138,8 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
     /**
         External view function of total USDC deposited in Covex Booster
      */
-    function totalAssets() external view override returns (uint256) {
-        return _totalAssets(true);
+    function totalAssets(bool fetch) external view override returns (uint256) {
+        return _totalAssets(fetch);
     }
 
     /**

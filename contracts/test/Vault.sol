@@ -77,7 +77,7 @@ contract EFNewVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reen
         TransferHelper.safeTransfer(address(asset), address(controller), assets);
 
         // Total Assets amount until now
-        uint256 totalDeposit = IController(controller).totalAssets();
+        uint256 totalDeposit = IController(controller).totalAssets(false);
         // Calls Deposit function on controller
         uint256 newDeposit = IController(controller).deposit(assets);
 
@@ -124,7 +124,7 @@ contract EFNewVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reen
     }
 
     function totalAssets() public view virtual returns (uint256) {
-        return IController(controller).totalAssets();
+        return IController(controller).totalAssets(false);
     }
 
     function convertToShares(uint256 assets) public view virtual returns (uint256) {

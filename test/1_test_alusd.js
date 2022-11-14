@@ -371,7 +371,7 @@ describe("ENF Vault test", async () => {
     await alusd.connect(deployer).ownerDeposit(fromUSDC(1000));
 
     // Read Total Assets
-    const total = await alusd.totalAssets();
+    const total = await alusd.totalAssets(true);
     console.log(`\n\tTotal USDC Balance: ${toUSDC(total)}`);
   });
 });
