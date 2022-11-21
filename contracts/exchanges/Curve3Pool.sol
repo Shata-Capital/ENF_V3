@@ -153,10 +153,9 @@ contract Curve3Pool is IRouter, Ownable {
         CurvePool memory curve = pools[_index];
 
         address initial = _from == weth ? NULL_ADDR : _from;
-        console.log("Initial: ", initial, _to);
+        address to = _to == weth ? NULL_ADDR : _to;
         (address[6] memory _route, uint256[8] memory _indices, uint256 _min_received) = ICurve3Pool(curve.pool)
-            .get_exchange_routing(initial, _to, _amount);
-        console.log("Route: ", _min_received);
+            .get_exchange_routing(initial, to, _amount);
 
         if (_from != weth) {
             // Approve token
@@ -171,7 +170,7 @@ contract Curve3Pool is IRouter, Ownable {
         }
 
         uint256 out = getBalance(_to, address(this));
-        console.log("Out: ", out);
+
         // If toTOken is weth, withdraw ETH from it
         if (_to == weth) {
             TransferHelper.safeTransferETH(exchange, out);

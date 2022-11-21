@@ -164,13 +164,9 @@ contract CDai is OwnableUpgradeable, ISubStrategy {
             uint256 i = curvePool.i;
             uint256 j = curvePool.j;
 
-            console.log("Dai Bal: ", daiBal);
             // Calculate withdraw amout of usdc - from Dai (i) to USDC(j)
             uint256 usdcBal = ICurvePool(poolAddr).get_dy(int128(uint128(i)), int128(uint128(j)), daiBal);
             daiBal = (daiBal * usdcDecimal) / daiDecimal;
-            console.log("USDC Bal: ", usdcBal);
-            console.log("Abstract: ", ((magnifier - abstractSlippage) * daiBal) / magnifier);
-            console.log("Abstract: ", ((magnifier + abstractSlippage) * daiBal) / magnifier);
 
             if (!fetch) {
                 require(

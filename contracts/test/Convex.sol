@@ -30,7 +30,6 @@ contract ConvexTest {
     constructor() {}
 
     function getPid(address lpToken) public view returns (uint256) {
-        console.log("LP Token: ", lpToken);
         for (uint256 i = 0; i < ConvexBoosterInterface(convexBooster).poolLength(); i++) {
             (address lp_token, , , , , bool shutdown) = ConvexBoosterInterface(convexBooster).poolInfo(i);
             if (!shutdown && lp_token == lpToken) {

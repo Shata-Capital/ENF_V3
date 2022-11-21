@@ -27,7 +27,21 @@ async function main() {
   // const tri = "0xBC6394e2f7C11Acdbb99545e46fc6F6878D94827";
 
   // await verifyUpgradeable(tri);
-  await verifyContract("0x5De3832Ae131D7e954F5d9C3E290E7b748db3b68", []);
+  const adds = [
+    "0x582010c270ef877031e6b16554e51CA5Bbda882E",
+    "0xB80fc201fABD688C6FFb69564a88A23bC892712f",
+    "0x9c05E66521fD3d42006e8D463b5FDF623bBe015B",
+    "0x061Ee25BB326272D9039ED1f4D52F758beF5c202",
+    "0x5710CD9e0c93c25580d1D42516CBE618Ee7852a1",
+    "0x8889911c9b35acB2b75a5Cd21A4a5EfB009aBc62",
+    "0x0dD99813D7056906B250810BbaeA85830E270Ce0",
+    "0xEe13A2273a6e8212A4234b7eB49fE1e3D1f37f5b",
+    "0xfa3eF26816EFD43fC624adf2120b87612E79Ddb9",
+  ];
+
+  for (let i = 0; i < adds.length; i++) {
+    await verifyContract(adds[i], []);
+  }
   // await verifyUpgradeable(lusd.address);
   // await verifyUpgradeable(aave.address);
   // await verifyUpgradeable(compound.address);

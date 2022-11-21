@@ -22,6 +22,11 @@ const {
   balancerNoteToUSDCPools,
   balancerNoteToETHPools,
   balancerNoteToETHAssets,
+  crvUsdcPath,
+  crvEthPath,
+  curveCRVETH,
+  curveUSDCDAI,
+  curveDAIUSDC,
 } = require("../constants/constants");
 
 let vault, controller, depositApprover, exchange, cusdc, uniV2, uniV3, balancer, balancerBatch, curve;
@@ -79,7 +84,7 @@ describe("ENF Vault test", async () => {
     // Deploy Exchange
     console.log("Deploying Exchange".green);
     const Exchange = await ethers.getContractFactory("Exchange");
-    exchange = await Exchange.deploy(weth, controller.address);
+    exchange = await upgrades.deployProxy(Exchange, [weth, controller.address]);
 
     // Deploy routers
     console.log("\nDeploying Uni V2 Router".green);
@@ -89,18 +94,18 @@ describe("ENF Vault test", async () => {
 
     console.log("\nDeploying Uni V3 Router".green);
     const UniV3 = await ethers.getContractFactory("UniswapV3");
-    uniV3 = await UniV3.deploy(uniSwapV3Router, exchange.address);
+    uniV3 = await UniV3.deploy(uniSwapV3Router, exchange.address, weth);
     console.log("Uni V3 is deployed: ", uniV3.address);
+
+    console.log("\nDeploying Curve".green);
+    const Curve = await ethers.getContractFactory("Curve");
+    curve = await Curve.deploy(weth, exchange.address);
+    console.log("Curve is deployed: ", curve.address);
 
     console.log("\nDeploying Balancer".green);
     const Balancer = await ethers.getContractFactory("BalancerV2");
     balancer = await Balancer.deploy(balancerV2Vault, exchange.address, weth);
     console.log("Balancer V2 is Deployed: ", balancer.address);
-
-    console.log("\nDeploying Balancer BatchSwap".green);
-    const BalancerBatch = await ethers.getContractFactory("BalancerBatchV2");
-    balancerBatch = await BalancerBatch.deploy(balancerV2Vault, exchange.address, weth);
-    console.log("Balancer Batch V2 is Deployed: ", balancerBatch.address);
 
     /**
      * Wiring Contracts with each other
@@ -134,14 +139,31 @@ describe("ENF Vault test", async () => {
     console.log("Withdraw slippage set");
 
     // Set CRV-USDC to exchange
+    await uniV2.addPath(uniSwapV2Router, crvUsdcPath);
+
+    // Set CRV-USDC to exchange
+    await uniV2.addPath(uniSwapV2Router, crvEthPath);
+
+    // Set CRV-USDC to exchange
     await uniV2.addPath(uniSwapV2Router, ethUsdcPath);
+
+    // Set CRV-USDC to CURVE
+    await curve.addCurvePool(...curveCRVETH);
+    await curve.addCurvePool(...curveUSDCDAI);
+    await curve.addCurvePool(...curveDAIUSDC);
+
+    console.log("\nDeploying Balancer BatchSwap".green);
+    const BalancerBatch = await ethers.getContractFactory("BalancerBatchV2");
+    balancerBatch = await BalancerBatch.deploy(balancerV2Vault, exchange.address, weth);
+    console.log("Balancer Batch V2 is Deployed: ", balancerBatch.address);
 
     // Set swaps on Balancer Batch
     await balancerBatch.addPath(balancerNoteToUSDCPools, balancerNoteToUSDCAssets);
 
-    // Set swaps on Balancer
-    await balancer.addPath(balancerNoteToETHSwap);
-    await balancer.addPath(balancerETHToUSDCSwap);
+    // Set Routers to exchange
+    await exchange.listRouter(uniV2.address);
+    await exchange.listRouter(curve.address);
+    await exchange.listRouter(balancerBatch.address);
 
     // Get CRV-USDC path index
     const index = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath);

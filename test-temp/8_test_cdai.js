@@ -253,133 +253,133 @@ describe("ENF Vault test", async () => {
     console.log(`\tAlice ENF Balance: ${toEth(enf)}`);
   });
 
-  // ///////////////////////////////////////////////////
-  // //                WITHDRAW                       //
-  // ///////////////////////////////////////////////////
-  // it("Withdraw 90 USDC", async () => {
-  //   await vault.connect(alice).withdraw(fromUSDC(90), alice.address);
-  //   // Read Total Assets
-  //   const total = await vault.totalAssets();
-  //   console.log(`\tTotal USDC Balance: ${toUSDC(total)}`);
+  ///////////////////////////////////////////////////
+  //                WITHDRAW                       //
+  ///////////////////////////////////////////////////
+  it("Withdraw 90 USDC", async () => {
+    await vault.connect(alice).withdraw(fromUSDC(90), alice.address);
+    // Read Total Assets
+    const total = await vault.totalAssets();
+    console.log(`\tTotal USDC Balance: ${toUSDC(total)}`);
 
-  //   // Read ENF token Mint
-  //   const enf = await vault.balanceOf(alice.address);
-  //   console.log(`\tAlice ENF Balance: ${toEth(enf)}`);
-  // });
+    // Read ENF token Mint
+    const enf = await vault.balanceOf(alice.address);
+    console.log(`\tAlice ENF Balance: ${toEth(enf)}`);
+  });
 
-  // it("Withdraw 10 USDC will be reverted", async () => {
-  //   await expect(vault.connect(alice).withdraw(fromUSDC(10), alice.address)).to.revertedWith("EXCEED_TOTAL_DEPOSIT");
-  // });
+  it("Withdraw 10 USDC will be reverted", async () => {
+    await expect(vault.connect(alice).withdraw(fromUSDC(10), alice.address)).to.revertedWith("EXCEED_TOTAL_DEPOSIT");
+  });
 
-  // it("Deposit 1000 USDC", async () => {
-  //   // Approve to deposit approver
-  //   await usdcContract(alice).approve(depositApprover.address, fromUSDC(1000));
+  it("Deposit 1000 USDC", async () => {
+    // Approve to deposit approver
+    await usdcContract(alice).approve(depositApprover.address, fromUSDC(1000));
 
-  //   // Deposit
-  //   await depositApprover.connect(alice).deposit(fromUSDC(1000));
+    // Deposit
+    await depositApprover.connect(alice).deposit(fromUSDC(1000));
 
-  //   // Read Total Assets
-  //   const total = await vault.totalAssets();
-  //   console.log(`\tTotal USDC Balance: ${toUSDC(total)}`);
+    // Read Total Assets
+    const total = await vault.totalAssets();
+    console.log(`\tTotal USDC Balance: ${toUSDC(total)}`);
 
-  //   // Read ENF token Mint
-  //   const enf = await vault.balanceOf(alice.address);
-  //   console.log(`\tAlice ENF Balance: ${toEth(enf)}`);
-  // });
+    // Read ENF token Mint
+    const enf = await vault.balanceOf(alice.address);
+    console.log(`\tAlice ENF Balance: ${toEth(enf)}`);
+  });
 
-  // //   // it("Get Pid", async () => {
-  // //   //     const triPID = await alusd.getPID(triLP)
-  // //   //     console.log(`\tTriPool Pid: ${triPID}`)
-  // //   // })
+  //   // it("Get Pid", async () => {
+  //   //     const triPID = await alusd.getPID(triLP)
+  //   //     console.log(`\tTriPool Pid: ${triPID}`)
+  //   // })
 
-  // //   ////////////////////////////////////////////////
-  // //   //                  HARVEST                   //
-  // //   ////////////////////////////////////////////////
+  //   ////////////////////////////////////////////////
+  //   //                  HARVEST                   //
+  //   ////////////////////////////////////////////////
 
-  // //   // it("Pass Time and block number", async () => {
-  // //   //     await network.provider.send("evm_increaseTime", [3600 * 24 * 60]);
-  // //   //     await network.provider.send("evm_mine");
-  // //   //     await network.provider.send("evm_mine");
-  // //   //     await network.provider.send("evm_mine");
-  // //   // })
+  //   // it("Pass Time and block number", async () => {
+  //   //     await network.provider.send("evm_increaseTime", [3600 * 24 * 60]);
+  //   //     await network.provider.send("evm_mine");
+  //   //     await network.provider.send("evm_mine");
+  //   //     await network.provider.send("evm_mine");
+  //   // })
 
-  // it("Harvest CUSDC", async () => {
-  //   // Get NOTE-USDC path index
-  //   const index = await balancerBatch.getPathIndex(balancerNoteToUSDCAssets);
-  //   console.log(`\tNOTE-USDC Path index: ${index}\n`);
+  it("Harvest CUSDC", async () => {
+    // Get NOTE-USDC path index
+    const index = await balancerBatch.getPathIndex(balancerNoteToUSDCAssets);
+    console.log(`\tNOTE-USDC Path index: ${index}\n`);
 
-  //   await controller.harvest([0], [index], [balancerBatch.address]);
+    await controller.harvest([0], [index], [balancerBatch.address]);
 
-  //   // Read Total Assets
-  //   const total = await vault.totalAssets();
-  //   console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`);
-  // });
+    // Read Total Assets
+    const total = await vault.totalAssets();
+    console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`);
+  });
 
-  // //   // it("Pass Time and block number", async () => {
-  // //   //     await network.provider.send("evm_increaseTime", [3600 * 24 * 60]);
-  // //   //     await network.provider.send("evm_mine");
-  // //   //     await network.provider.send("evm_mine");
-  // //   //     await network.provider.send("evm_mine");
-  // //   // })
+  //   // it("Pass Time and block number", async () => {
+  //   //     await network.provider.send("evm_increaseTime", [3600 * 24 * 60]);
+  //   //     await network.provider.send("evm_mine");
+  //   //     await network.provider.send("evm_mine");
+  //   //     await network.provider.send("evm_mine");
+  //   // })
 
-  // //   // it("Harvest ALUSD with multi-router", async () => {
-  // //   //     // Get CRV-USDC path index
-  // //   //     const index0 = await uniV2.getPathIndex(uniSwapV2Router, crvEthPath)
-  // //   //     const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath)
-  // //   //     console.log(`\tCRV-ETH Path index: ${index0}\n`)
+  //   // it("Harvest ALUSD with multi-router", async () => {
+  //   //     // Get CRV-USDC path index
+  //   //     const index0 = await uniV2.getPathIndex(uniSwapV2Router, crvEthPath)
+  //   //     const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath)
+  //   //     console.log(`\tCRV-ETH Path index: ${index0}\n`)
 
-  // //   //     await controller.harvest([0], [index0, index1], [uniV2.address, uniV2.address])
+  //   //     await controller.harvest([0], [index0, index1], [uniV2.address, uniV2.address])
 
-  // //   //     // Read Total Assets
-  // //   //     const total = await vault.totalAssets()
-  // //   //     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
-  // //   // })
+  //   //     // Read Total Assets
+  //   //     const total = await vault.totalAssets()
+  //   //     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`)
+  //   // })
 
-  // //   it("Harvest ALUSD with multi-router", async () => {
-  // //     // Get CRV-USDC path index
-  // //     const index0 = await curve.getPathIndex(...curveCRVETH);
-  // //     const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath);
-  // //     console.log(`\tCRV-ETH Path index: ${index0}\n`);
-  // //     console.log(`\tETH-USDC Path index: ${index1}\n`);
+  //   it("Harvest ALUSD with multi-router", async () => {
+  //     // Get CRV-USDC path index
+  //     const index0 = await curve.getPathIndex(...curveCRVETH);
+  //     const index1 = await uniV2.getPathIndex(uniSwapV2Router, ethUsdcPath);
+  //     console.log(`\tCRV-ETH Path index: ${index0}\n`);
+  //     console.log(`\tETH-USDC Path index: ${index1}\n`);
 
-  // //     await controller.harvest([0], [index0, index1], [curve.address, uniV2.address]);
+  //     await controller.harvest([0], [index0, index1], [curve.address, uniV2.address]);
 
-  // //     // Read Total Assets
-  // //     const total = await vault.totalAssets();
-  // //     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`);
-  // //   });
+  //     // Read Total Assets
+  //     const total = await vault.totalAssets();
+  //     console.log(`\tTotal USDC Balance: ${toUSDC(total)}\n`);
+  //   });
 
-  // ////////////////////////////////////////////////
-  // //              EMERGENCY WITHDRAW            //
-  // ////////////////////////////////////////////////
-  // it("Emergency Withdraw by non-owner will be reverted", async () => {
-  //   await expect(cDai.connect(alice).emergencyWithdraw()).to.be.revertedWith("Ownable: caller is not the owner");
-  // });
+  ////////////////////////////////////////////////
+  //              EMERGENCY WITHDRAW            //
+  ////////////////////////////////////////////////
+  it("Emergency Withdraw by non-owner will be reverted", async () => {
+    await expect(cDai.connect(alice).emergencyWithdraw()).to.be.revertedWith("Ownable: caller is not the owner");
+  });
 
-  // it("Emergency Withdraw", async () => {
-  //   await cDai.emergencyWithdraw();
-  // });
+  it("Emergency Withdraw", async () => {
+    await cDai.emergencyWithdraw();
+  });
 
-  // // it("Get LP withdrawn", async () => {
-  // //     const lpBal = await cDaiContract(alice).balanceOf(deployer.address)
-  // //     console.log(`\tCusdc LP Withdrawn: ${toEth(lpBal)}`)
-  // // })
+  // it("Get LP withdrawn", async () => {
+  //     const lpBal = await cDaiContract(alice).balanceOf(deployer.address)
+  //     console.log(`\tCusdc LP Withdrawn: ${toEth(lpBal)}`)
+  // })
 
-  // /////////////////////////////////////////////////
-  // //               OWNER DEPOSIT                 //
-  // /////////////////////////////////////////////////
-  // it("Owner deposit will be reverted", async () => {
-  //   await expect(cDai.connect(alice).ownerDeposit(fromUSDC(100))).to.revertedWith("Ownable: caller is not the owner");
-  // });
+  /////////////////////////////////////////////////
+  //               OWNER DEPOSIT                 //
+  /////////////////////////////////////////////////
+  it("Owner deposit will be reverted", async () => {
+    await expect(cDai.connect(alice).ownerDeposit(fromUSDC(100))).to.revertedWith("Ownable: caller is not the owner");
+  });
 
-  // it("Owner Deposit", async () => {
-  //   // Approve to deposit approver
-  //   await usdcContract(deployer).approve(cDai.address, fromUSDC(1000));
+  it("Owner Deposit", async () => {
+    // Approve to deposit approver
+    await usdcContract(deployer).approve(cDai.address, fromUSDC(1000));
 
-  //   await cDai.connect(deployer).ownerDeposit(fromUSDC(1000));
+    await cDai.connect(deployer).ownerDeposit(fromUSDC(1000));
 
-  //   // Read Total Assets
-  //   const total = await cDai.totalAssets();
-  //   console.log(`\n\tTotal USDC Balance: ${toUSDC(total)}`);
-  // });
+    // Read Total Assets
+    const total = await cDai.totalAssets(true);
+    console.log(`\n\tTotal USDC Balance: ${toUSDC(total)}`);
+  });
 });

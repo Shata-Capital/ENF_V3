@@ -281,7 +281,6 @@ contract Controller is Initializable, IController, OwnableUpgradeable, Reentranc
                 continue;
             // Harvest from Individual Sub Strategy
             ISubStrategy(subStrategy).harvest();
-            console.log("Harvestd");
         }
 
         require(exchange != address(0), "EXCHANGE_NOT_SET");
