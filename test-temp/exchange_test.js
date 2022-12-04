@@ -3,7 +3,7 @@ const { expect, util } = require("chai");
 const colors = require("colors");
 const { utils } = require("ethers");
 
-const { usdcContract, uniV2RouterContract, uniV2FactoryContract, alusdContract } = require("./externalContracts");
+const { usdcContract, uniV2RouterContract, uniV2FactoryContract, alusdContract } = require("../test/externalContracts");
 
 const {
   usdc,
